@@ -1,0 +1,24 @@
+{
+	"name": "GeoDocs Drive",
+	"supportEmail": "israel.margulies@highpointgps.com",
+	"version": "0.0.1",
+	"items": [
+		{
+			"url": "https://cdn.jsdelivr.net/gh/Byte-Size-Coder/hpgps-filemanager-drive@latest/dist/hpgpsFilemanagerDrive.html",
+			"path": "DriveAppLink/",
+			"menuName": {
+				"en": "GeoDocs"
+			},
+			"icon": "https://cdn.jsdelivr.net/gh/Byte-Size-Coder/hpgps-filemanager-drive@latest/dist/images/icon.svg"
+		}
+	],
+
+	"onStartup": true,
+	"onShutdown": true,
+	"dev": {
+		"root": "hpgpsFilemanagerDrive",
+		"dist": {
+			"host": "https://www.example.com/myaddin/"
+		}
+	}
+}

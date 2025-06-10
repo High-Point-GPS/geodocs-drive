@@ -1,0 +1,42 @@
+@import 'react-tooltip/dist/react-tooltip.css';
+
+.nightMode {
+	color: white;
+}
+
+.pagenation-foot {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.pagenation-button {
+	width: 50px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.cell-overflow {
+	text-overflow: ellipsis;
+}
+
+.account-info {
+	display: flex;
+	gap: 3rem;
+	padding-left: 2rem;
+	padding-right: 2rem;
+}
+
+.sticky {
+	position: sticky !important;
+	left: 0;
+	top: 0;
+	z-index: 1;
+	background-color: white;
+}
+
+input {
+	height: 3rem !important;
+	font-size: 1.5rem !important;
+}

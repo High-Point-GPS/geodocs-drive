@@ -4,7 +4,7 @@ import { IconButton, Tooltip, CircularProgress } from '@mui/material';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 
 
-const DownloadButton = ({ filePath, fileName, database, session, server, onValidationError }) => {
+const DownloadButton = ({ filePath, fileName, database, session, server, onValidationError, onError }) => {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
@@ -36,6 +36,7 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
           onValidationError();
         }
         console.error('Download failed:', errorData.error || '');
+        onError(errorData);
         return;
       }
 
@@ -45,10 +46,13 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
       link.download = fileName;
       link.click();
     } catch (err) {
-      console.error(err);
+      console.log(err);
+      const errorMessage = err?.message || String(err) || 'Unexpected error';
+      onError(errorMessage);
     } finally {
       setLoading(false);
     }
+
   };
 
   return (

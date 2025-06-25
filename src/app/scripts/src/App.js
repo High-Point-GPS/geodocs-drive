@@ -11,8 +11,15 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 	const [files, setFiles] = useState([]);
 	const [mobile, setMobile] = useState(false);
 	const [validationError, setValidationError] = useState(false);
+	const [openError, setOpenError] = useState(false);
+	const [errorText, setErrorText] = useState('');
 	const [loading, setLoading] = useState(false);
 	
+	const handleError = (error) => {
+		setErrorText(error);
+		setOpenError(true);
+	}
+
 	const fetchFiles = async() => {
 		setLoading(true);
 
@@ -95,6 +102,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 								session={session}
 								server={server}
 								onValidationError={() => setValidationError(true)}
+								onError={handleError}
 							/>
 						),
 					});
@@ -110,6 +118,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				setLoading(false);
 			}
 	}
+
 
 	useEffect(() => {
 		fetchFiles();
@@ -176,6 +185,22 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				</DialogContent>
 				<DialogActions>
 					<Button variant="contained" onClick={() => setValidationError(false)}>
+						OK
+					</Button>
+				</DialogActions>
+			</Dialog>
+
+			<Dialog
+				open={openError}
+				onClose={() => setOpenError(false)}
+				aria-labelledby="validation-error-title"
+				>
+				<DialogTitle id="validation-error-title" sx={{fontSize: 24}}>Error</DialogTitle>
+				<DialogContent>
+					<Typography variant='body1'>{errorText}</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button variant="contained" onClick={() => setOpenError(false)}>
 						OK
 					</Button>
 				</DialogActions>

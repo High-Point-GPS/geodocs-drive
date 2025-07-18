@@ -130,27 +130,27 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 				freshState.translate(elAddin || '');
 			}
 
-			 freshApi.getSession(async (session, server) => {
-                    Object.assign(sessionInfo, {
-                    database: session.database,
-                    userName: session.userName,
-                    sessionId: session.sessionId,
-                    server: server
-                });
+			//  freshApi.getSession(async (session, server) => {
+            //         Object.assign(sessionInfo, {
+            //         database: session.database,
+            //         userName: session.userName,
+            //         sessionId: session.sessionId,
+            //         server: server
+            //     });
 
-                const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, api);
+            //     // const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, api);
 
-                if (!eulaAcceptanceStatus) {
-                    showModal(true);
-                } else {
-                    showModal(false);
-                }
+            //     // if (!eulaAcceptanceStatus) {
+            //     //     showModal(true);
+            //     // } else {
+            //     //     showModal(false);
+            //     // }
 
 
-            });
+            // });
 
-            elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', api));
-            elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', api));
+            // elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', api));
+            // elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', api));
 			// MUST call initializeCallback when done any setup
 			initializeCallback();
 		},
@@ -274,7 +274,8 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
 								const container = document.getElementById('scroll-content');
 
-								const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, api);
+								//const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, api);
+								const eulaAcceptanceStatus = true;
 
 								if (container && eulaAcceptanceStatus) {
 									const root = createRoot(container);

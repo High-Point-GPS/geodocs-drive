@@ -8,6 +8,84 @@ import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 import { getGroups } from './src/utils/formatter';
 
+const sessionInfo = {};
+const addinId = 'amNmY2Q2ZDEtMmZjMy1hOWJ';
+
+
+const elements = {
+    eulaModalBackdrop: document.getElementById('eula-modal-backdrop'),
+    eulaModal: document.getElementById('eula-modal'),
+    eulaMessageDiv: document.getElementById('eula-message'),
+    acceptButton: document.getElementById('eula-accept-button'),
+    declineButton: document.getElementById('eula-decline-button'),
+    //mainUiDiv: document.getElementById('main-ui')
+};
+
+const showModal = (shouldShow) => {
+    elements.eulaModalBackdrop.style.display = shouldShow ? 'flex' : 'none';
+    return shouldShow;
+};
+
+const handleButtonClick = async (buttonValue, api) => {
+    showModal(false);
+
+    if (buttonValue === 'Decline') {
+        redirectToDashboard();
+    } else if (buttonValue === 'Accept') {
+        try {
+            const currentDate = new Date().toISOString();
+            await addAddinData(addinId, { userName: sessionInfo.userName, acceptedDate: currentDate }, api);
+			location.reload(true)
+            
+        } catch (error) {
+            console.error('Error in handleButtonClick:', error);
+        }
+    }
+};
+
+const redirectToDashboard = () => {
+    if (sessionInfo.server && sessionInfo.database) {
+        window.location.href = `https://${sessionInfo.server}/${sessionInfo.database}/#dashboard`;
+    } else {
+        console.error('Error: sessionInfo.server or sessionInfo.database is undefined.');
+    }
+};
+
+const isEulaAccepted = (userName, addinId, api) => {
+    return new Promise((resolve, reject) => {
+        api.call('Get', {
+            'typeName': 'AddInData',
+            'search': { 'addInId': addinId, 'selectClause': 'acceptedDate', 'whereClause': `userName = "${userName}"` }
+        }, (result) => {
+            if (result.length > 0) {
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        }, (error) => {
+            console.error('Failed to get EULA acceptance:', error);
+            reject(error);
+        });
+    });
+};
+
+const addAddinData = async (addInId, details, api) => {
+    try {
+        await new Promise((resolve, reject) => {
+            api.call('Add', {
+                'typeName': 'AddInData',
+                'entity': { 'addInId': addInId, 'details': details }
+            }, (res, err) => {
+                if (err) reject(err);
+                else resolve(res);
+            });
+        });
+    } catch (error) {
+        console.error('Error adding add-in data:', error);
+        throw error;
+    }
+};
+
 /**
  * @returns {{initialize: Function, focus: Function, blur: Function, startup; Function, shutdown: Function}}
  */
@@ -51,6 +129,28 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 			if (freshState.translate) {
 				freshState.translate(elAddin || '');
 			}
+
+			 freshApi.getSession(async (session, server) => {
+                    Object.assign(sessionInfo, {
+                    database: session.database,
+                    userName: session.userName,
+                    sessionId: session.sessionId,
+                    server: server
+                });
+
+                const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, api);
+
+                if (!eulaAcceptanceStatus) {
+                    showModal(true);
+                } else {
+                    showModal(false);
+                }
+
+
+            });
+
+            elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', api));
+            elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', api));
 			// MUST call initializeCallback when done any setup
 			initializeCallback();
 		},
@@ -68,7 +168,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 		 */
 		focus: function (freshApi, freshState) {
 			// getting the current user to display in the UI
-			freshApi.getSession((session, server) => {
+			freshApi.getSession(async (session, server) => {
 				let calls = [];
 				if (freshState.device.id === 'NoDeviceId') {
 					calls = [
@@ -163,7 +263,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 								},
 								,
 							]),
-							function (result) {
+							async function (result) {
 								let newTrailers = [];
 
 								if (result.length > 0) {
@@ -173,7 +273,10 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 								appEl.className = appEl.className.replace('hidden', '').trim();
 
 								const container = document.getElementById('scroll-content');
-								if (container) {
+
+								const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, api);
+
+								if (container && eulaAcceptanceStatus) {
 									const root = createRoot(container);
 									root.render(
 										<App

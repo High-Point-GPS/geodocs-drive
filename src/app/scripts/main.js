@@ -22,7 +22,12 @@ const elements = {
 };
 
 const showModal = (shouldShow) => {
-    elements.eulaModalBackdrop.style.display = shouldShow ? 'flex' : 'none';
+	const backdrop = document.getElementById('eula-modal-backdrop');
+
+	if (backdrop) {
+		backdrop.style.display = shouldShow ? 'flex' : 'none';
+	}
+	
     return shouldShow;
 };
 

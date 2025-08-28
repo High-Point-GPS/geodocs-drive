@@ -9,104 +9,104 @@ import '@fontsource/roboto/700.css';
 import { getGroups } from './src/utils/formatter';
 
 const sessionInfo = {};
-const addinId = 'amNmY2Q2ZDEtMmZjMy1hOWJ';
+// const addinId = 'amNmY2Q2ZDEtMmZjMy1hOWJ';
 
 
-const elements = {
-    eulaModalBackdrop: document.getElementById('eula-modal-backdrop'),
-    eulaModal: document.getElementById('eula-modal'),
-    eulaMessageDiv: document.getElementById('eula-message'),
-    acceptButton: document.getElementById('eula-accept-button'),
-    declineButton: document.getElementById('eula-decline-button'),
-    //mainUiDiv: document.getElementById('main-ui')
-};
+// const elements = {
+//     eulaModalBackdrop: document.getElementById('eula-modal-backdrop'),
+//     eulaModal: document.getElementById('eula-modal'),
+//     eulaMessageDiv: document.getElementById('eula-message'),
+//     acceptButton: document.getElementById('eula-accept-button'),
+//     declineButton: document.getElementById('eula-decline-button'),
+//     //mainUiDiv: document.getElementById('main-ui')
+// };
 
-const showModal = (shouldShow) => {
-	const backdrop = document.getElementById('eula-modal-backdrop');
+// const showModal = (shouldShow) => {
+// 	const backdrop = document.getElementById('eula-modal-backdrop');
 
-	if (backdrop) {
-		backdrop.style.display = shouldShow ? 'flex' : 'none';
-	}
+// 	if (backdrop) {
+// 		backdrop.style.display = shouldShow ? 'flex' : 'none';
+// 	}
 	
-    return shouldShow;
-};
+//     return shouldShow;
+// };
 
-const handleButtonClick = async (buttonValue, api) => {
-    showModal(false);
+// const handleButtonClick = async (buttonValue, api) => {
+//     showModal(false);
 
-    if (buttonValue === 'Decline') {
-        redirectToDashboard();
-    } else if (buttonValue === 'Accept') {
-        try {
-            // Replace with your actual Firebase endpoint URL
-            const endpoint = 'https://us-central1-geotabfiles.cloudfunctions.net/addEulaUser';
+//     if (buttonValue === 'Decline') {
+//         redirectToDashboard();
+//     } else if (buttonValue === 'Accept') {
+//         try {
+//             // Replace with your actual Firebase endpoint URL
+//             const endpoint = 'https://us-central1-geotabfiles.cloudfunctions.net/addEulaUser';
 
-            // Get session info if not already available
-            const session = sessionInfo.sessionId || (await new Promise(resolve => {
-                api.getSession((sess) => resolve(sess.sessionId));
-            }));
-            const database = sessionInfo.database;
-            const username = sessionInfo.userName;
+//             // Get session info if not already available
+//             const session = sessionInfo.sessionId || (await new Promise(resolve => {
+//                 api.getSession((sess) => resolve(sess.sessionId));
+//             }));
+//             const database = sessionInfo.database;
+//             const username = sessionInfo.userName;
 
-            if (!session || !database || !username) {
-                throw new Error('Missing session, database, or username');
-            }
+//             if (!session || !database || !username) {
+//                 throw new Error('Missing session, database, or username');
+//             }
 
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    session: sessionInfo,
-                    database,
-                    username
-                })
-            });
+//             const response = await fetch(endpoint, {
+//                 method: 'POST',
+//                 headers: { 'Content-Type': 'application/json' },
+//                 body: JSON.stringify({
+//                     session: sessionInfo,
+//                     database,
+//                     username
+//                 })
+//             });
 
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}`);
-            }
+//             if (!response.ok) {
+//                 throw new Error(`Server responded with ${response.status}`);
+//             }
 
-            location.reload(true);
+//             location.reload(true);
 
-        } catch (error) {
-            console.error('Error in handleButtonClick:', error);
-        }
-    }
-};
+//         } catch (error) {
+//             console.error('Error in handleButtonClick:', error);
+//         }
+//     }
+// };
 
-const redirectToDashboard = () => {
-    if (sessionInfo.server && sessionInfo.database) {
-        window.location.href = `https://${sessionInfo.server}/${sessionInfo.database}/#dashboard`;
-    } else {
-        console.error('Error: sessionInfo.server or sessionInfo.database is undefined.');
-    }
-};
+// const redirectToDashboard = () => {
+//     if (sessionInfo.server && sessionInfo.database) {
+//         window.location.href = `https://${sessionInfo.server}/${sessionInfo.database}/#dashboard`;
+//     } else {
+//         console.error('Error: sessionInfo.server or sessionInfo.database is undefined.');
+//     }
+// };
 
-const isEulaAccepted = async (userName, api) => {
-    const endpoint = 'https://us-central1-geotabfiles.cloudfunctions.net/checkEula';
+// const isEulaAccepted = async (userName, api) => {
+//     const endpoint = 'https://us-central1-geotabfiles.cloudfunctions.net/checkEula';
 
-    try {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                session: sessionInfo,
-                database: sessionInfo.database,
-                username: userName
-            })
-        });
+//     try {
+//         const response = await fetch(endpoint, {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify({
+//                 session: sessionInfo,
+//                 database: sessionInfo.database,
+//                 username: userName
+//             })
+//         });
 
-        if (!response.ok) {
-            throw new Error(`Server responded with ${response.status}`);
-        }
+//         if (!response.ok) {
+//             throw new Error(`Server responded with ${response.status}`);
+//         }
 
-        const data = await response.json();
-        return !!data.eulaAccepted;
-    } catch (error) {
-        console.error('Failed to check EULA acceptance:', error);
-        return false;
-    }
-};
+//         const data = await response.json();
+//         return !!data.eulaAccepted;
+//     } catch (error) {
+//         console.error('Failed to check EULA acceptance:', error);
+//         return false;
+//     }
+// };
 
 /**
  * @returns {{initialize: Function, focus: Function, blur: Function, startup; Function, shutdown: Function}}
@@ -160,19 +160,19 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
                     server: server
                 });
 
-                const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, freshApi);
+                // const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, freshApi);
 
-                if (!eulaAcceptanceStatus) {
-                    showModal(true);
-                } else {
-                    showModal(false);
-                }
+                // if (!eulaAcceptanceStatus) {
+                //     showModal(true);
+                // } else {
+                //     showModal(false);
+                // }
 
 
             });
 
-            elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
-            elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
+            // elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
+            // elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
 			// MUST call initializeCallback when done any setup
 			initializeCallback();
 		},
@@ -296,8 +296,8 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
 								const container = document.getElementById('scroll-content');
 
-								const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, freshApi);
-								//const eulaAcceptanceStatus = true;
+								//const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, freshApi);
+								const eulaAcceptanceStatus = true;
 
 								if (container && eulaAcceptanceStatus) {
 									const root = createRoot(container);

@@ -135,7 +135,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 	}, []);
 
 	return (
-		<Box id="HPGPS-drive" sx={{ padding: '2rem' }}>
+		<Box sx={{ padding: '2rem' }}>
 			<Box
 				sx={{
 					display: 'flex',

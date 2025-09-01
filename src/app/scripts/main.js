@@ -190,10 +190,11 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
 			console.log(' INIT set up button handlers');
 			console.log('elements', elements);
-            // elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
-            // elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
-		
-		
+
+			const acceptButton = document.getElementById('eula-accept-button');
+    		const declineButton = document.getElementById('eula-decline-button');
+            acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
+            declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
 		},
 
 		/**

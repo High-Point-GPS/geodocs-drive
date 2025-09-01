@@ -171,17 +171,17 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
                     server: server
                 });
 
-				console.log('INIT CHECK EULA ACCEPT');
+				// console.log('INIT CHECK EULA ACCEPT');
 
-                const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
+                // const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
 
-				console.log('INIT EULA ACCEPTANCE STATUS', eulaAcceptanceStatus);
+				// console.log('INIT EULA ACCEPTANCE STATUS', eulaAcceptanceStatus);
 
-                if (!eulaAcceptanceStatus) {
-                    showModal(true);
-                } else {
-                    showModal(false);
-                }
+                // if (!eulaAcceptanceStatus) {
+                //     showModal(true);
+                // } else {
+                //     showModal(false);
+                // }
 
 				// MUST call initializeCallback when done any setup
 				console.log('INIT callback time');

@@ -85,6 +85,9 @@ const redirectToDashboard = () => {
 const isEulaAccepted = async (userName, api) => {
     const endpoint = 'https://us-central1-geotabfiles.cloudfunctions.net/checkEula';
 
+	
+	console.log('isEULA starting endpoint');
+
     try {
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -96,11 +99,14 @@ const isEulaAccepted = async (userName, api) => {
             })
         });
 
+			console.log('isEULA result in');
+
         if (!response.ok) {
             throw new Error(`Server responded with ${response.status}`);
         }
 
         const data = await response.json();
+				console.log('isEULA result out', data);
         return !!data.eulaAccepted;
     } catch (error) {
         console.error('Failed to check EULA acceptance:', error);
@@ -153,12 +159,15 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 			}
 
 			 freshApi.getSession(async (session, server) => {
+				console.log(' INIT get session... assgning to object');
                     Object.assign(sessionInfo, {
                     database: session.database,
                     userName: session.userName,
                     sessionId: session.sessionId,
                     server: server
                 });
+
+				console.log('INIT CHECK EULA ACCEPT');
 
                 const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
 
@@ -171,6 +180,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
             });
 
+			console.log(' INIT set up button handlers');
             elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
             elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
 			// MUST call initializeCallback when done any setup
@@ -191,6 +201,9 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 		focus: function (freshApi, freshState) {
 			// getting the current user to display in the UI
 			freshApi.getSession(async (session, server) => {
+				
+				console.log('FOCUS START');
+  
 				let calls = [];
 				if (freshState.device.id === 'NoDeviceId') {
 					calls = [
@@ -253,6 +266,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 				freshApi.multiCall(
 					calls,
 					function (result) {
+						console.log('FOCUS MULTI CALL RETURN');
 						let device = null;
 						let user = null;
 						let trailer = [];
@@ -284,6 +298,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 								,
 							]),
 							async function (result) {
+									console.log('FOCUS MULTI TRAILER');
 								let newTrailers = [];
 
 								if (result.length > 0) {
@@ -294,10 +309,18 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
 								const container = document.getElementById('scroll-content');
 
+								console.log('FOCUS CHECK EULA');
 								const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
 								//const eulaAcceptanceStatus = true;
 
+								console.log('FOCUS CHECK EULA FINISH');
+
+								
+								console.log('FOCUS CONTAINER', container);
+
 								if (container && eulaAcceptanceStatus) {
+									
+								console.log('FOCUS SET UP APP');
 									const root = createRoot(container);
 									root.render(
 										<App

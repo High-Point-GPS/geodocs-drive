@@ -171,20 +171,24 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
                 const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
 
+				console.log('INIT EULA ACCEPTANCE STATUS', eulaAcceptanceStatus);
+
                 if (!eulaAcceptanceStatus) {
                     showModal(true);
                 } else {
                     showModal(false);
                 }
 
-
+				// MUST call initializeCallback when done any setup
+				console.log('INIT callback time');
+				initializeCallback();
             });
 
 			console.log(' INIT set up button handlers');
             elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
             elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
-			// MUST call initializeCallback when done any setup
-			initializeCallback();
+		
+		
 		},
 
 		/**
@@ -199,10 +203,11 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 		 * @param {object} freshState - The page state object allows access to URL, page navigation and global group filter.
 		 */
 		focus: function (freshApi, freshState) {
+				console.log('FOCUS START');
 			// getting the current user to display in the UI
 			freshApi.getSession(async (session, server) => {
 				
-				console.log('FOCUS START');
+				console.log('FOCUS get session START');
   
 				let calls = [];
 				if (freshState.device.id === 'NoDeviceId') {

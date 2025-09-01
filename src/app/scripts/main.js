@@ -189,7 +189,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
             });
 
 			console.log(' INIT set up button handlers');
-			console.log(elements);
+			console.log('elements', elements);
             // elements.acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
             // elements.declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
 		

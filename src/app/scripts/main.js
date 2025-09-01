@@ -11,26 +11,12 @@ import { getGroups } from './src/utils/formatter';
 const sessionInfo = {};
 const addinId = 'amNmY2Q2ZDEtMmZjMy1hOWJ';
 
-
-const elements = {
-    eulaModalBackdrop: document.getElementById('eula-modal-backdrop'),
-    eulaModal: document.getElementById('eula-modal'),
-    eulaMessageDiv: document.getElementById('eula-message'),
-    acceptButton: document.getElementById('eula-accept-button'),
-    declineButton: document.getElementById('eula-decline-button'),
-    //mainUiDiv: document.getElementById('main-ui')
-};
-
 const showModal = (shouldShow) => {
-	console.log('SHOW MODAL', shouldShow);
 	const backdrop = document.getElementById('eula-modal-backdrop');
-	console.log('backdrop', backdrop);
 
 	if (backdrop) {
 		backdrop.style.display = shouldShow ? 'flex' : 'none';
 	}
-
-	console.log('SHOW MODAL END', shouldShow);
 	
     return shouldShow;
 };
@@ -39,7 +25,8 @@ const handleButtonClick = async (buttonValue, api) => {
     showModal(false);
 
     if (buttonValue === 'Decline') {
-        redirectToDashboard();
+		const container = document.getElementById('scroll-content');
+		container.style.display = 'none';
     } else if (buttonValue === 'Accept') {
         try {
             // Replace with your actual Firebase endpoint URL
@@ -70,7 +57,7 @@ const handleButtonClick = async (buttonValue, api) => {
                 throw new Error(`Server responded with ${response.status}`);
             }
 
-            location.reload(true);
+			showModal(false);
 
         } catch (error) {
             console.error('Error in handleButtonClick:', error);
@@ -78,19 +65,8 @@ const handleButtonClick = async (buttonValue, api) => {
     }
 };
 
-const redirectToDashboard = () => {
-    if (sessionInfo.server && sessionInfo.database) {
-        window.location.href = `https://${sessionInfo.server}/${sessionInfo.database}/#dashboard`;
-    } else {
-        console.error('Error: sessionInfo.server or sessionInfo.database is undefined.');
-    }
-};
-
 const isEulaAccepted = async (userName, api) => {
     const endpoint = 'https://us-central1-geotabfiles.cloudfunctions.net/checkEula';
-
-	
-	console.log('isEULA starting endpoint');
 
     try {
         const response = await fetch(endpoint, {
@@ -103,14 +79,12 @@ const isEulaAccepted = async (userName, api) => {
             })
         });
 
-			console.log('isEULA result in');
 
         if (!response.ok) {
             throw new Error(`Server responded with ${response.status}`);
         }
 
         const data = await response.json();
-				console.log('isEULA result out', data);
         return !!data.eulaAccepted;
     } catch (error) {
         console.error('Failed to check EULA acceptance:', error);
@@ -163,7 +137,6 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 			}
 
 			 freshApi.getSession(async (session, server) => {
-				console.log(' INIT get session... assgning to object');
                     Object.assign(sessionInfo, {
                     database: session.database,
                     userName: session.userName,
@@ -171,30 +144,14 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
                     server: server
                 });
 
-				console.log('INIT CHECK EULA ACCEPT');
-
-                const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
-
-				console.log('INIT EULA ACCEPTANCE STATUS', eulaAcceptanceStatus);
-
-                if (!eulaAcceptanceStatus) {
-                    showModal(true);
-                } else {
-                    showModal(false);
-                }
+				// const acceptButton = document.getElementById('eula-accept-button');
+				// const declineButton = document.getElementById('eula-decline-button');
+				// acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
+				// declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
 
 				// MUST call initializeCallback when done any setup
-				console.log('INIT callback time');
 				initializeCallback();
             });
-
-			console.log(' INIT set up button handlers');
-			console.log('elements', elements);
-
-			const acceptButton = document.getElementById('eula-accept-button');
-    		const declineButton = document.getElementById('eula-decline-button');
-            acceptButton.addEventListener('click', () => handleButtonClick('Accept', freshApi));
-            declineButton.addEventListener('click', () => handleButtonClick('Decline', freshApi));
 		},
 
 		/**
@@ -209,11 +166,46 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 		 * @param {object} freshState - The page state object allows access to URL, page navigation and global group filter.
 		 */
 		focus: function (freshApi, freshState) {
-				console.log('FOCUS START');
+
+			function waitForEulaResponse() {
+					return new Promise((resolve) => {
+						const acceptButton = document.getElementById('eula-accept-button');
+						const declineButton = document.getElementById('eula-decline-button');
+
+						// Remove previous listeners if any
+						acceptButton.onclick = null;
+						declineButton.onclick = null;
+
+						acceptButton.onclick = async () => {
+							await handleButtonClick('Accept', freshApi);
+							showModal(false);
+							resolve(true);
+						};
+						declineButton.onclick = async () => {
+							await handleButtonClick('Decline', freshApi);
+							showModal(false);
+							resolve(false);
+						};
+					});
+				}
+
 			// getting the current user to display in the UI
 			freshApi.getSession(async (session, server) => {
-				
-				console.log('FOCUS get session START');
+
+				const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
+
+				if (!eulaAcceptanceStatus) {
+					showModal(true);
+					const accepted = await waitForEulaResponse();
+					if (!accepted) {
+						// User declined, hide content and exit
+						const container = document.getElementById('scroll-content');
+						if (container) container.style.display = 'none';
+						return;
+					}
+				} else {
+					showModal(false);
+				}
   
 				let calls = [];
 				if (freshState.device.id === 'NoDeviceId') {
@@ -277,7 +269,6 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 				freshApi.multiCall(
 					calls,
 					function (result) {
-						console.log('FOCUS MULTI CALL RETURN');
 						let device = null;
 						let user = null;
 						let trailer = [];
@@ -309,7 +300,6 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 								,
 							]),
 							async function (result) {
-									console.log('FOCUS MULTI TRAILER');
 								let newTrailers = [];
 
 								if (result.length > 0) {
@@ -320,18 +310,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
 								const container = document.getElementById('scroll-content');
 
-								console.log('FOCUS CHECK EULA');
-								const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
-								//const eulaAcceptanceStatus = true;
-
-								console.log('FOCUS CHECK EULA FINISH');
-
-								
-								console.log('FOCUS CONTAINER', container);
-
-								if (container && eulaAcceptanceStatus) {
-									
-								console.log('FOCUS SET UP APP');
+								if (container) {
 									const root = createRoot(container);
 									root.render(
 										<App

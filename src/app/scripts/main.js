@@ -22,11 +22,15 @@ const elements = {
 };
 
 const showModal = (shouldShow) => {
+	console.log('SHOW MODAL', shouldShow);
 	const backdrop = document.getElementById('eula-modal-backdrop');
+	console.log('backdrop', backdrop);
 
 	if (backdrop) {
 		backdrop.style.display = shouldShow ? 'flex' : 'none';
 	}
+
+	console.log('SHOW MODAL END', shouldShow);
 	
     return shouldShow;
 };

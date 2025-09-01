@@ -160,7 +160,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
                     server: server
                 });
 
-                const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, freshApi);
+                const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
 
                 if (!eulaAcceptanceStatus) {
                     showModal(true);
@@ -270,8 +270,6 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 							groups = result[3];
 						}
 
-						console.log(trailer);
-
 						const trailerIds = trailer.map((t) => t.trailer.id);
 
 						freshApi.multiCall(
@@ -296,7 +294,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
 								const container = document.getElementById('scroll-content');
 
-								const eulaAcceptanceStatus = await isEulaAccepted(sessionInfo.userName, addinId, freshApi);
+								const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
 								//const eulaAcceptanceStatus = true;
 
 								if (container && eulaAcceptanceStatus) {

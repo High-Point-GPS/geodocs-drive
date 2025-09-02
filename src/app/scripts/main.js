@@ -9,7 +9,7 @@ import '@fontsource/roboto/700.css';
 import { getGroups } from './src/utils/formatter';
 
 const sessionInfo = {};
-const addinId = 'amNmY2Q2ZDEtMmZjMy1hOWJ';
+let eulaAcceptedFlag = true;
 
 const showModal = (shouldShow) => {
 	const backdrop = document.getElementById('eula-modal-backdrop');
@@ -136,6 +136,25 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 				freshState.translate(elAddin || '');
 			}
 
+			function waitForEulaResponse() {
+				return new Promise((resolve) => {
+					const acceptButton = document.getElementById('eula-accept-button');
+					const declineButton = document.getElementById('eula-decline-button');
+					acceptButton.onclick = null;
+					declineButton.onclick = null;
+					acceptButton.onclick = async () => {
+						await handleButtonClick('Accept', freshApi);
+						showModal(false);
+						resolve(true);
+					};
+					declineButton.onclick = async () => {
+						await handleButtonClick('Decline', freshApi);
+						showModal(false);
+						resolve(false);
+					};
+				});
+			}
+
 			 freshApi.getSession(async (session, server) => {
                     Object.assign(sessionInfo, {
                     database: session.database,
@@ -143,6 +162,21 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
                     sessionId: session.sessionId,
                     server: server
                 });
+				const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
+
+				if (!eulaAcceptanceStatus) {
+					showModal(true);
+					const accepted = await waitForEulaResponse();
+					if (!accepted) {
+						// User declined, set flag and hide content
+						eulaAcceptedFlag = false;
+						const container = document.getElementById('scroll-content');
+						if (container) container.style.display = 'none';
+						return;
+					}
+				}
+				showModal(false);
+				eulaAcceptedFlag = true;
 
 				// const acceptButton = document.getElementById('eula-accept-button');
 				// const declineButton = document.getElementById('eula-decline-button');
@@ -167,179 +201,155 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 		 */
 		focus: function (freshApi, freshState) {
 
-			function waitForEulaResponse() {
-					return new Promise((resolve) => {
-						const acceptButton = document.getElementById('eula-accept-button');
-						const declineButton = document.getElementById('eula-decline-button');
-
-						// Remove previous listeners if any
-						acceptButton.onclick = null;
-						declineButton.onclick = null;
-
-						acceptButton.onclick = async () => {
-							await handleButtonClick('Accept', freshApi);
-							showModal(false);
-							resolve(true);
-						};
-						declineButton.onclick = async () => {
-							await handleButtonClick('Decline', freshApi);
-							showModal(false);
-							resolve(false);
-						};
-					});
-				}
-
 			// getting the current user to display in the UI
 			freshApi.getSession(async (session, server) => {
 
-				const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
-
-				if (!eulaAcceptanceStatus) {
-					showModal(true);
-					const accepted = await waitForEulaResponse();
-					if (!accepted) {
-						// User declined, hide content and exit
-						const container = document.getElementById('scroll-content');
-						if (container) container.style.display = 'none';
-						return;
-					}
-				} else {
-					showModal(false);
-				}
-  
-				let calls = [];
-				if (freshState.device.id === 'NoDeviceId') {
-					calls = [
-						[
-							'Get',
-							{
-								typeName: 'User',
-								search: {
-									name: session.userName,
+				if (eulaAcceptedFlag) {
+					let calls = [];
+					if (freshState.device.id === 'NoDeviceId') {
+						calls = [
+							[
+								'Get',
+								{
+									typeName: 'User',
+									search: {
+										name: session.userName,
+									},
 								},
-							},
-						],
-						[
-							'Get',
-							{
-								typeName: 'Group',
-							},
-						],
-					];
-				} else {
-					calls = [
-						[
-							'Get',
-							{
-								typeName: 'Device',
-								search: {
-									id: freshState.device.id,
+							],
+							[
+								'Get',
+								{
+									typeName: 'Group',
 								},
-							},
-						],
-						[
-							'Get',
-							{
-								typeName: 'User',
-								search: {
-									name: session.userName,
-								},
-							},
-						],
-						[
-							'Get',
-							{
-								typeName: 'TrailerAttachment',
-								search: {
-									deviceSearch: {
+							],
+						];
+					} else {
+						calls = [
+							[
+								'Get',
+								{
+									typeName: 'Device',
+									search: {
 										id: freshState.device.id,
 									},
 								},
-							},
-						],
-						[
-							'Get',
-							{
-								typeName: 'Group',
-							},
-						],
-					];
-				}
-
-				freshApi.multiCall(
-					calls,
-					function (result) {
-						let device = null;
-						let user = null;
-						let trailer = [];
-						let groups = [];
-
-						if (freshState.device.id === 'NoDeviceId') {
-							device = null;
-							user = result[0][0] ? result[0][0] : null;
-							trailer = [];
-							groups = result[1];
-						} else {
-							device = result[0][0] ? result[0][0] : null;
-							user = result[1][0] ? result[1][0] : null;
-							trailer = result[2];
-							groups = result[3];
-						}
-
-						const trailerIds = trailer.map((t) => t.trailer.id);
-
-						freshApi.multiCall(
-							trailerIds.map((trailerId) => [
+							],
+							[
 								'Get',
 								{
-									typeName: 'Trailer',
+									typeName: 'User',
 									search: {
-										id: trailerId,
+										name: session.userName,
 									},
 								},
-								,
-							]),
-							async function (result) {
-								let newTrailers = [];
-
-								if (result.length > 0) {
-									newTrailers = result.map((r) => r[0].name);
-								}
-								// show main content
-								appEl.className = appEl.className.replace('hidden', '').trim();
-
-								const container = document.getElementById('scroll-content');
-
-								if (container) {
-									const root = createRoot(container);
-									root.render(
-										<App
-											api={freshApi}
-											session={session}
-											server={server}
-											database={session.database}
-											groups={getGroups(device, user, groups)}
-											device={
-												device !== null
-													? `${device.name} (${device.serialNumber})`
-													: 'none'
-											}
-											driver={
-												user !== null
-													? `${user.firstName} ${user.lastName}`
-													: ''
-											}
-											trailer={newTrailers}
-										/>
-									);
-								}
-							}
-						);
-					},
-					function (error) {
-						console.log(error);
+							],
+							[
+								'Get',
+								{
+									typeName: 'TrailerAttachment',
+									search: {
+										deviceSearch: {
+											id: freshState.device.id,
+										},
+									},
+								},
+							],
+							[
+								'Get',
+								{
+									typeName: 'Group',
+								},
+							],
+						];
 					}
-				);
+
+					freshApi.multiCall(
+						calls,
+						function (result) {
+							let device = null;
+							let user = null;
+							let trailer = [];
+							let groups = [];
+
+							if (freshState.device.id === 'NoDeviceId') {
+								device = null;
+								user = result[0][0] ? result[0][0] : null;
+								trailer = [];
+								groups = result[1];
+							} else {
+								device = result[0][0] ? result[0][0] : null;
+								user = result[1][0] ? result[1][0] : null;
+								trailer = result[2];
+								groups = result[3];
+							}
+
+							const trailerIds = trailer.map((t) => t.trailer.id);
+
+							freshApi.multiCall(
+								trailerIds.map((trailerId) => [
+									'Get',
+									{
+										typeName: 'Trailer',
+										search: {
+											id: trailerId,
+										},
+									},
+									,
+								]),
+								async function (result) {
+									let newTrailers = [];
+
+									if (result.length > 0) {
+										newTrailers = result.map((r) => r[0].name);
+									}
+									// show main content
+									appEl.className = appEl.className.replace('hidden', '').trim();
+
+									const container = document.getElementById('scroll-content');
+
+									if (container) {
+										const root = createRoot(container);
+										root.render(
+											<App
+												api={freshApi}
+												session={session}
+												server={server}
+												database={session.database}
+												groups={getGroups(device, user, groups)}
+												device={
+													device !== null
+														? `${device.name} (${device.serialNumber})`
+														: 'none'
+												}
+												driver={
+													user !== null
+														? `${user.firstName} ${user.lastName}`
+														: ''
+												}
+												trailer={newTrailers}
+											/>
+										);
+									}
+								}
+							);
+						},
+						function (error) {
+							console.log(error);
+						}
+					);
+				} else {
+					const container = document.getElementById('scroll-content');
+					if (container) {
+						container.style.display = 'block';
+						container.innerHTML = `
+							<div style="padding:2em;text-align:center;color:#b00;">
+								<h2>EULA Declined</h2>
+								<p>You have declined the End User License Agreement. This application cannot be used until you accept the EULA.</p>
+							</div>
+						`;
+					}
+				}
 			});
 		},
 

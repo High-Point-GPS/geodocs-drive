@@ -162,7 +162,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
                     sessionId: session.sessionId,
                     server: server
                 });
-				const eulaAcceptanceStatus = await isEulaAccepted(session.userName, addinId, freshApi);
+				const eulaAcceptanceStatus = await isEulaAccepted(session.userName);
 
 				if (!eulaAcceptanceStatus) {
 					showModal(true);

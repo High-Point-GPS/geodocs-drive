@@ -4,12 +4,12 @@
 	"version": "0.0.1",
 	"items": [
 		{
-			"url": "https://cdn.jsdelivr.net/gh/Byte-Size-Coder/hpgps-filemanager-drive@latest/dist/hpgpsFilemanagerDrive.html",
+			"url": "https://high-point-gps.github.io/geodocs-drive/hpgpsFilemanagerDrive.html",
 			"path": "DriveAppLink/",
 			"menuName": {
 				"en": "GeoDocs"
 			},
-			"icon": "https://cdn.jsdelivr.net/gh/Byte-Size-Coder/hpgps-filemanager-drive@latest/dist/images/icon.svg"
+			"icon": "https://high-point-gps.github.io/geodocs-drive/images/icon.svg"
 		}
 	],
 
@@ -18,7 +18,7 @@
 	"dev": {
 		"root": "hpgpsFilemanagerDrive",
 		"dist": {
-			"host": "https://www.example.com/myaddin/"
+			"host": "./"
 		}
 	}
 }

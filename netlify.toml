@@ -1,0 +1,15 @@
+# This section handles the redirect for your React app's routing, preventing 404 errors.
+[[redirects]]
+  from = "/*"
+  to = "/hpgpsFilemanager.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+    Access-Control-Allow-Origin = "https://my.geotab.com"
+
+    Content-Security-Policy = "frame-ancestors 'self' https://my.geotab.com;"

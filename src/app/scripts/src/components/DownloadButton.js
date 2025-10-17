@@ -23,9 +23,8 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
       };
       const messageBody = { session: sessionInfo, filePath, fileName };
 
-      if (isAndroidDevice) {
-        const response = await fetch(
-          'https://us-central1-geotabfiles.cloudfunctions.net/readDocFileUrl',
+      const response = await fetch(
+          'https://us-central1-geotabfiles.cloudfunctions.net/openDocFile',
           {
             method: 'POST',
             headers: {
@@ -39,37 +38,25 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
         const data = await response.json();
 
         if (data.url) {
-          window.location.href = data.url;
-        }
-      } else {
-        const response = await fetch(
-          'https://us-central1-geotabfiles.cloudfunctions.net/readDocFile',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json'
-            },
-            body: JSON.stringify(messageBody)
-          }
-        );
+          // try opening in new window/tab (best chance to render inline)
+          const opened = window.open(data.url, '_blank', 'noopener,noreferrer');
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          if (errorData.valid === false && onValidationError) {
-            onValidationError();
-          }
-          console.error('Download failed:', errorData.error || '');
-          onError(errorData);
-          return;
-        }
+          if (!opened) {
+            // try anchor click (sometimes works when window.open blocked)
+            const a = document.createElement('a');
+            a.href = data.url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
 
-        const blob = await response.blob();
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = fileName;
-        link.click();
-      }
+            // final fallback: navigate (forces download in many cases)
+            // keep as last resort
+            // window.location.href = data.url;
+          }
+        }
+      
 
 
     } catch (err) {

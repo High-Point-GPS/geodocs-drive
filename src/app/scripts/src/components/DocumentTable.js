@@ -26,10 +26,16 @@ import {
 	TableCell,
 	Typography,
 	Paper,
+	IconButton,
 	Button,
 } from '@mui/material';
 
 import { columns, globalStringFilter, stringMatchFilter } from '../utils/table-helper';
+
+import FirstPageIcon from '@mui/icons-material/FirstPage';
+import LastPageIcon from '@mui/icons-material/LastPage';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 
 import '../../../styles/app.css';
 
@@ -62,6 +68,20 @@ const DocumentTable = ({ files }) => {
 		debugColumns: false,
 	});
 
+	const iconButtonSx = {
+        width: 38, // Makes it a nice square
+        height: 38,
+        // Applies the background to the button itself
+        backgroundColor: (theme) =>
+            theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100],
+        // This is what makes it a "rounded square" instead of a circle
+        borderRadius: (theme) => theme.shape.borderRadius,
+        '&:hover': {
+            backgroundColor: (theme) =>
+                theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[200],
+        }
+    };
+
 	return (
 		<Paper
 			style={{
@@ -78,6 +98,7 @@ const DocumentTable = ({ files }) => {
 					value={globalFilter ?? ''}
 					onChange={(value) => setGlobalFilter(String(value))}
 					placeholder="Search all columns..."
+					sx={{ width: '100%', maxWidth: '500px' }}
 				/>
 			</Box>
 			<TableContainer>
@@ -139,74 +160,85 @@ const DocumentTable = ({ files }) => {
 					</TableBody>
 				</Table>
 
-				{files.length > table.getState().pagination.pageSize && (
-					<Box
-						sx={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: '0.5rem',
-							marginTop: '0.5rem',
-							marginBottom: '1rem',
-						}}
-					>
-						<Button
-							onClick={() => table.setPageIndex(0)}
-							disabled={!table.getCanPreviousPage()}
-						>
-							{'<<'}
-						</Button>
-						<Button
-							onClick={() => table.previousPage()}
-							disabled={!table.getCanPreviousPage()}
-						>
-							{'<'}
-						</Button>
-						<Button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-							{'>'}
-						</Button>
-						<Button
-							onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-							disabled={!table.getCanNextPage()}
-						>
-							{'>>'}
-						</Button>
-						<span className="pagenation-foot">
-							<Typography>Page</Typography>
-							<Typography sx={{ fontWeight: 'bold' }}>
-								{table.getState().pagination.pageIndex + 1} of{' '}
-								{table.getPageCount()}
-							</Typography>
-						</span>
-						<span className="pagenation-foot">
-							<Typography>| Go to page:</Typography>
-							<TextField
-								sx={{ width: '75px' }}
-								type="number"
-								size="small"
-								defaultValue={table.getState().pagination.pageIndex + 1}
-								onChange={(e) => {
-									const page = e.target.value ? Number(e.target.value) - 1 : 0;
-									table.setPageIndex(page);
-								}}
-							/>
-						</span>
-						<Select
-							size="small"
-							value={table.getState().pagination.pageSize}
-							onChange={(e) => {
-								table.setPageSize(Number(e.target.value));
-							}}
-							className="geotabFormEditField"
-						>
-							{[10, 20, 30, 40, 50].map((pageSize) => (
-								<MenuItem key={pageSize} value={pageSize}>
-									Show {pageSize}
-								</MenuItem>
-							))}
-						</Select>
-						<div>{table.getPrePaginationRowModel().rows.length} Rows</div>
-					</Box>
-				)}
+		{files.length > table.getState().pagination.pageSize && (
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: '1rem',
+                                marginTop: '0.5rem',
+                                marginBottom: '1rem',
+                                padding: '0.5rem 0'
+                            }}
+                        >
+                            {/* Group 1: Navigation Buttons (LEFT) */}
+                            <Box sx={{ display: 'flex', gap: '0.5rem' }}> {/* Added gap for spacing */}
+                                <IconButton
+                                    sx={iconButtonSx} // Apply the style here
+                                    onClick={() => table.setPageIndex(0)}
+                                    disabled={!table.getCanPreviousPage()}
+                                    aria-label="first page"
+                                >
+                                    <FirstPageIcon />
+                                </IconButton>
+                                <IconButton
+                                    sx={iconButtonSx} // Apply the style here
+                                    onClick={() => table.previousPage()}
+                                    disabled={!table.getCanPreviousPage()}
+                                    aria-label="previous page"
+                                >
+                                    <NavigateBeforeIcon />
+                                </IconButton>
+                                <IconButton
+                                    sx={iconButtonSx} // Apply the style here
+                                    onClick={() => table.nextPage()}
+                                    disabled={!table.getCanNextPage()}
+                                    aria-label="next page"
+                                >
+                                    <NavigateNextIcon />
+                                </IconButton>
+                                <IconButton
+                                    sx={iconButtonSx} // Apply the style here
+                                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                                    disabled={!table.getCanNextPage()}
+                                    aria-label="last page"
+                                >
+                                    <LastPageIcon />
+                                </IconButton>
+                            </Box>
+
+                            {/* Group 2: Page Info (RIGHT) */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Typography variant="body2">Page</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                        {table.getState().pagination.pageIndex + 1} of{' '}
+                                        {table.getPageCount()}
+                                    </Typography>
+                                </Box>
+
+                                <Select
+                                    size="small"
+                                    value={table.getState().pagination.pageSize}
+                                    onChange={(e) => {
+                                        table.setPageSize(Number(e.target.value));
+                                    }}
+                                >
+                                    {[10, 20, 30, 40, 50].map((pageSize) => (
+                                        <MenuItem key={pageSize} value={pageSize}>
+                                            Show {pageSize}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+
+                                <Typography variant="body2" color="text.secondary">
+                                    {table.getPrePaginationRowModel().rows.length} Rows
+                                </Typography>
+                            </Box>
+                        </Box>
+                    )}
 			</TableContainer>
 		</Paper>
 	);

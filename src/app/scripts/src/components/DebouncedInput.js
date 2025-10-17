@@ -20,8 +20,8 @@ const DebouncedInput = ({ value: initialValue, onChange, debounce = 500, ...prop
 	return (
 		<TextField
 			variant="outlined"
-			sx={{ width: '200px' }}
-			size="small"
+			sx={{ width: '200px', }}
+			size="medium"
 			{...props}
 			value={value}
 			onChange={(e) => setValue(e.target.value)}

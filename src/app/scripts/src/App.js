@@ -5,6 +5,7 @@ import DocumentMobile from './components/DocumentMobile';
 import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress } from '@mui/material';
 
 import DownloadButton from './components/DownloadButton';
+import ViewButton from './components/ViewButton';
 
 
 const App = ({ database, session, server, groups, driver, device, trailer }) => {
@@ -95,15 +96,27 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 						...file,
 						associated,
 						action: (
-							<DownloadButton
-								filePath={file.path}
-								fileName={file.fileName}
-								database={database}
-								session={session}
-								server={server}
-								onValidationError={() => setValidationError(true)}
-								onError={handleError}
-							/>
+							<Box sx={{ display: 'flex', gap: '0.5rem' }}>
+								<ViewButton
+									filePath={file.path}
+									fileName={file.fileName}
+									database={database}
+									session={session}
+									server={server}
+									onValidationError={() => setValidationError(true)}
+									onError={handleError}
+								/>
+								<DownloadButton
+									filePath={file.path}
+									fileName={file.fileName}
+									database={database}
+									session={session}
+									server={server}
+									onValidationError={() => setValidationError(true)}
+									onError={handleError}
+								/>
+							</Box>
+						
 						),
 					});
 				}

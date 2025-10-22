@@ -2,10 +2,16 @@ import React, { useEffect, useState } from 'react';
 import DocumentTable from './components/DocumentTable';
 import DocumentMobile from './components/DocumentMobile';
 
-import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress } from '@mui/material';
+import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Grid } from '@mui/material';
 
 import DownloadButton from './components/DownloadButton';
 import ViewButton from './components/ViewButton';
+import InfoCard from './components/InfoCard';
+
+import GroupsIcon from '@mui/icons-material/Groups';
+import AirlineSeatReclineNormalIcon from '@mui/icons-material/AirlineSeatReclineNormal';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import RvHookupIcon from '@mui/icons-material/RvHookup';
 
 
 const App = ({ database, session, server, groups, driver, device, trailer }) => {
@@ -96,7 +102,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 						...file,
 						associated,
 						action: (
-							<Box sx={{ display: 'flex', gap: '0.5rem' }}>
+							<Box sx={{ display: 'flex', gap: '2rem' }}>
 								<ViewButton
 									filePath={file.path}
 									fileName={file.fileName}
@@ -148,33 +154,17 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 	}, []);
 
 	return (
-		<Box sx={{ padding: '2rem' }}>
-			<Box
-				sx={{
-					display: 'flex',
-					flexDirection: { xs: 'column', sm: 'column', md: 'row' },
-					gap: { xs: '2rem', sm: '2rem', md: '3rem' },
-				}}
-			>
-				<Box sx={{ display: 'flex', gap: '0.5rem' }}>
-					<Typography variant="h4">Groups: </Typography>
-					<Typography variant="h4">{groups.join(', ')}</Typography>
-				</Box>
-				<Box sx={{ display: 'flex', gap: '0.5rem' }}>
-					<Typography variant="h4">Driver: </Typography>
-					<Typography variant="h4">{driver}</Typography>
-				</Box>
-				<Box sx={{ display: 'flex', gap: '0.5rem' }}>
-					<Typography variant="h4">Vehicle: </Typography>
-					<Typography variant="h4">{device ? device : 'none'}</Typography>
-				</Box>
-				<Box sx={{ display: 'flex', gap: '0.5rem' }}>
-					<Typography variant="h4">Trailer(s): </Typography>
-					<Typography variant="h4">
-						{trailer.length > 0 ? trailer.join(', ') : 'none'}
-					</Typography>
-				</Box>
-			</Box>
+		<Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#f6f8fa', minHeight: '100vh', fontFamily: 'Inter, Roboto, sans-serif' }}>
+			<Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                GeoDocs Portal
+            </Typography>
+			 <Grid container spacing={{xs: 1, sm : 2}}>
+                <InfoCard icon={<GroupsIcon />} title="Groups" subheader={groups.join(', ')} color={{ bg: '#e6f6e9', icon: '#2e7d32' }} />
+                <InfoCard icon={<AirlineSeatReclineNormalIcon />} title="Driver" subheader={driver} color={{ bg: '#e3f2fd', icon: '#1565c0' }} />
+                <InfoCard icon={<LocalShippingIcon />} title="Vehicle" subheader={device} color={{ bg: '#fffde7', icon: '#f9a825' }} />
+                <InfoCard icon={<RvHookupIcon />} title="Trailer(s)" subheader={trailer.join(', ')} color={{ bg: '#f3e5f5', icon: '#6a1b9a' }} />
+            </Grid>
+	
 			{
 				loading ? (
 					<Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px'}}>

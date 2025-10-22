@@ -143,7 +143,7 @@ const ViewButton = ({ filePath, fileName, database, session, server, onValidatio
     <>
       <Tooltip title="View File" sx={{ maxWidth: '40px' }}>
         <IconButton onClick={handleClick} disabled={loading} size="large">
-          {loading ? <CircularProgress size={28} /> : <VisibilityIcon fontSize="large" color="primary" />}
+          {loading ? <CircularProgress size={24} /> : <VisibilityIcon fontSize="large" color="primary" sx={{fontSize: '32px'}}/>}
         </IconButton>
       </Tooltip>
 

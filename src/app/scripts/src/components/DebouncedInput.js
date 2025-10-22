@@ -20,8 +20,10 @@ const DebouncedInput = ({ value: initialValue, onChange, debounce = 500, ...prop
 	return (
 		<TextField
 			variant="outlined"
-			sx={{ width: '200px', }}
-			size="medium"
+				sx={{
+			'& .MuiInputBase-input': {
+			padding: '20px 14px', 
+			},}}
 			{...props}
 			value={value}
 			onChange={(e) => setValue(e.target.value)}

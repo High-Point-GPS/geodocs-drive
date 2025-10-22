@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
 import { IconButton, Tooltip, CircularProgress } from '@mui/material';
-import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
-
+import DownloadForOfflineIcon from '@mui/icons-material/DownloadForOffline';
 
 
 const DownloadButton = ({ filePath, fileName, database, session, server, onValidationError, onError }) => {
@@ -63,7 +62,7 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
           {loading ? (
             <CircularProgress size={24} />
           ) : (
-            <OpenInNewRoundedIcon fontSize="large" color="primary" />
+            <DownloadForOfflineIcon fontSize="large" color="primary" sx={{fontSize: '32px'}}/>
           )}
         </IconButton>
 

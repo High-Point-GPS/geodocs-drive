@@ -20,6 +20,11 @@ import CloseIcon from '@mui/icons-material/Close';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+
+
+
 const ViewButton = ({ filePath, fileName, database, session, server, onValidationError, onError }) => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -30,8 +35,74 @@ const ViewButton = ({ filePath, fileName, database, session, server, onValidatio
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // stable plugin instance for viewer
- const defaultLayoutPluginInstance = defaultLayoutPlugin();
+const renderToolbar = (Toolbar) => (
+  <Toolbar>
+        {(slots) => (
+            <div
+                style={{
+                    alignItems: 'center',
+                    display: 'flex',
+                    width: '100%',
+                }}
+            >
+                {/* Group 1: Zoom Controls */}
+                <div
+                    style={{
+                        alignItems: 'center',
+                        display: 'flex',
+                        padding: '0 8px', // Add padding around the group
+                    }}
+                >
+                    <slots.ZoomOut />
+                    <slots.Zoom />
+                    <slots.ZoomIn />
+                </div>
+
+                {/* Group 2: Page Controls */}
+                <div
+                    style={{
+                        alignItems: 'center',
+                        display: 'flex',
+                        padding: '0 8px', // Add padding
+                        borderLeft: '1px solid #ccc', // Add a visual separator
+                        borderRight: '1px solid #ccc', // Add a visual separator
+                    }}
+                >
+                    <slots.GoToPreviousPage />
+                    <div style={{ padding: '0 4px', minWidth: '5rem', textAlign: 'center' }}>
+                        <slots.CurrentPageLabel /> / <slots.NumberOfPages />
+                    </div>
+                    <slots.GoToNextPage />
+                </div>
+
+                {/* Group 3: Rotate */}
+                <div
+                    style={{
+                        alignItems: 'center',
+                        display: 'flex',
+                        padding: '0 8px', // Add padding
+                    }}
+                >
+                    <slots.Rotate />
+                </div>
+
+                {/* You can add a flexible spacer to push 
+                    other items (if you had any) to the right */}
+                <div style={{ flex: 1 }} /> 
+                
+            </div>
+        )}
+    </Toolbar>
+);
+
+// 2. Pass the renderToolbar function to the plugin instance
+const defaultLayoutPluginInstance = defaultLayoutPlugin({
+    renderToolbar,
+
+    sidebarTabs: () =>
+        []
+});
+
 
   useEffect(() => {
     setLoadingPreview(true);
@@ -180,18 +251,6 @@ const ViewButton = ({ filePath, fileName, database, session, server, onValidatio
           p: fullScreen ? 2 : 1,
           flexDirection: fullScreen ? 'column' : 'row'
         }}>
-          {fileUrl && (
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth={fullScreen}
-              onClick={() => window.open(fileUrl, '_blank', 'noopener,noreferrer')}
-              startIcon={<VisibilityIcon />}
-              aria-label="Open in new tab action"
-            >
-              Open in new tab
-            </Button>
-          )}
           <Button
             variant="outlined"
             color="inherit"

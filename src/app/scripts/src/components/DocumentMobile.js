@@ -20,7 +20,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import RvHookupIcon from '@mui/icons-material/RvHookup';
 import SearchIcon from '@mui/icons-material/Search';
 
-const DocumentMobile = ({ files, devices, drivers, trailers, groups }) => {
+const DocumentMobile = ({ files, devices, drivers, trailers, groups}) => {
     const [globalFilter, setGlobalFilter] = useState('');
     const [filteredFiles, setFilteredFiles] = useState([]);
 
@@ -79,6 +79,16 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups }) => {
         },
     };
 
+    const checkExpiry = (file) => {
+        if (!file.expiryDate) return false;
+
+        if (file.expiryDate) {
+            const today = dayjs();
+            const expiry = dayjs(file.expiryDate);
+            return today.isAfter(expiry, 'day');
+        }
+    }
+
     return (
         <Box
             sx={{
@@ -118,7 +128,7 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups }) => {
                             <CardContent sx={{ pb: '16px !important' }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                     <Typography variant="h5" sx={{ fontWeight: 'bold', fontSize: '16px' }}>{file.fileName}</Typography>
-                                    <Chip label={file.hasExpired ? 'Expired' : 'Active'} color={file.hasExpired ? 'error' : 'primary'} sx={{fontSize: '12px'}} />
+                                    <Chip label={checkExpiry(file) ? 'Expired' : 'Active'} color={checkExpiry(file) ? 'error' : 'primary'} sx={{fontSize: '12px'}} />
                                 </Box>
                                 <Typography variant="body1" color="text.secondary" sx={{fontSize: '14px'}}>
                                     {file.expiryDate ? `Expires: ${dayjs(file.expiryDate).format('MMM D, YYYY')}` : 'No expiry date'}

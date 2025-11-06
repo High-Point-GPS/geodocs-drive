@@ -47,6 +47,18 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 
 		try {
 
+			const configResponse = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/getDatabaseConfig',
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
+				},
+				body: JSON.stringify(messageBody)
+			});
+
+			const config = await configResponse.json();
+
 			const response = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/fetchDriveFiles',
 			{
 				method: 'POST',
@@ -98,6 +110,8 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 						});
 					});
 
+					console.log(config);
+
 					transformedFiles.push({
 						...file,
 						associated,
@@ -112,15 +126,18 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 									onValidationError={() => setValidationError(true)}
 									onError={handleError}
 								/>
-								<DownloadButton
-									filePath={file.path}
-									fileName={file.fileName}
-									database={database}
-									session={session}
-									server={server}
-									onValidationError={() => setValidationError(true)}
-									onError={handleError}
-								/>
+								{!config.restrictDownload && (
+									<DownloadButton
+										filePath={file.path}
+										fileName={file.fileName}
+										database={database}
+										session={session}
+										server={server}
+										onValidationError={() => setValidationError(true)}
+										onError={handleError}
+									/>
+								)}
+							
 							</Box>
 						
 						),
@@ -172,7 +189,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 					</Box>
 				) : (
 					<>
-						{mobile ? <DocumentMobile files={files} devices={[device]} drivers={[driver]} trailers={[...trailer]} groups={[...groups]}/> : <DocumentTable files={files} />}
+						{mobile ? <DocumentMobile files={files} devices={[device]} drivers={[driver]} trailers={[...trailer]} groups={[...groups]}/> : <DocumentTable files={files}/>}
 					</>
 				)
 			}

@@ -105,7 +105,11 @@ const DocumentTable = ({ files }) => {
 						'& .MuiInputBase-input': {
 							paddingTop: '20px',    // Or '1rem', '1.5em', etc.
 							paddingBottom: '20px', // Or '1rem', '1.5em', etc.
-							
+						
+						},
+							'& .MuiInputBase-root': {
+								fontSize: '2rem'
+								
 						}
 					}}
 				/>

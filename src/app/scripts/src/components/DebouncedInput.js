@@ -23,7 +23,7 @@ const DebouncedInput = ({ value: initialValue, onChange, debounce = 500, ...prop
 				sx={{
 			'& .MuiInputBase-input': {
 			padding: '20px 14px', 
-			},}}
+			}, fontSize: '2rem !important'}}
 			{...props}
 			value={value}
 			onChange={(e) => setValue(e.target.value)}

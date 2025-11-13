@@ -98,7 +98,16 @@ const DocumentTable = ({ files }) => {
 					value={globalFilter ?? ''}
 					onChange={(value) => setGlobalFilter(String(value))}
 					placeholder="Search all columns..."
-					sx={{ width: '100%', maxWidth: '500px' }}
+					sx={{ 
+						width: '100%', 
+						maxWidth: '500px',
+						// Apply padding to the input element itself
+						'& .MuiInputBase-input': {
+							paddingTop: '20px',    // Or '1rem', '1.5em', etc.
+							paddingBottom: '20px', // Or '1rem', '1.5em', etc.
+							
+						}
+					}}
 				/>
 			</Box>
 			<TableContainer>

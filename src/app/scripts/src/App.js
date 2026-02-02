@@ -37,9 +37,27 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 			server: server
 		};
 
-		console.log(device, driver, trailer, groups);
+		const queryTags = [];
 
-		const queryTags = [device.id, driver.id, ...trailer.map(t => t.id), ...groups];
+		if (device) {
+			queryTags.push(device.id);
+		}
+
+		if (driver) {
+			queryTags.push(driver.id);
+		}
+
+		if (trailer && trailer.length > 0) {
+			trailer.forEach(t => {
+				queryTags.push(t.id);
+			});	
+		}
+
+		if (groups && groups.length > 0) {
+			groups.forEach(g => {
+				queryTags.push(g);
+			});
+		}
 
 		const messageBody = {
 			database: database,
@@ -111,8 +129,6 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 							}
 						});
 					});
-
-					console.log(config);
 
 					transformedFiles.push({
 						...file,

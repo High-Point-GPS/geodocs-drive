@@ -180,8 +180,8 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
             </Typography>
 			 <Grid container spacing={{xs: 1, sm : 2}}>
                 <InfoCard icon={<GroupsIcon />} title="Groups" subheader={groups.join(', ')} color={{ bg: '#e6f6e9', icon: '#2e7d32' }} />
-                <InfoCard icon={<AirlineSeatReclineNormalIcon />} title="Driver" subheader={`${driver.firstName} ${driver.lastName}`} color={{ bg: '#e3f2fd', icon: '#1565c0' }} />
-                <InfoCard icon={<LocalShippingIcon />} title="Vehicle" subheader={`${device.name}`} color={{ bg: '#fffde7', icon: '#f9a825' }} />
+                <InfoCard icon={<AirlineSeatReclineNormalIcon />} title="Driver" subheader={`${driver ? `${driver.firstName} ${driver.lastName}` : 'No Driver Selected'}`} color={{ bg: '#e3f2fd', icon: '#1565c0' }} />
+                <InfoCard icon={<LocalShippingIcon />} title="Vehicle" subheader={`${device ? device.name : 'No Device Selected'}`} color={{ bg: '#fffde7', icon: '#f9a825' }} />
                 <InfoCard icon={<RvHookupIcon />} title="Trailer(s)" subheader={trailer.map(t => t.name).join(', ')} color={{ bg: '#f3e5f5', icon: '#6a1b9a' }} />
             </Grid>
 	

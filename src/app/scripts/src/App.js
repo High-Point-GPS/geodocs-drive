@@ -101,7 +101,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 
 						trailer.forEach((t) => {
 							if (t.id === tag) {
-								associated.push(t.name);
+								associated.push(t.id);
 							}
 						});
 

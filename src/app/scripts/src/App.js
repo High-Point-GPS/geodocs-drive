@@ -111,9 +111,9 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				if (file.fileName) {
 					const associated = [];
 					file.tags.forEach((tag) => {
-						if (tag === device.id) {
+						if (device && tag === device.id) {
 							associated.push(`${device.name}`);
-						} else if (tag === driver.id) {
+						} else if (driver && tag === driver.id) {
 							associated.push(`${driver.firstName} ${driver.lastName}`);
 						}
 
@@ -189,6 +189,14 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 	}, []);
 
 
+	const getDeviceHeader = (device) => {
+		return device ? [{id: device.id, name: device.name}] : [];
+	}
+
+	const getDriverHeader = (driver) => {
+		return driver ? [{id: driver.id, name: `${driver.firstName} ${driver.lastName}`}] : [];
+	}
+
 	return (
 		<Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#f6f8fa', minHeight: '100vh', fontFamily: 'Inter, Roboto, sans-serif' }}>
 			<Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -208,7 +216,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 					</Box>
 				) : (
 					<>
-						{mobile ? <DocumentMobile files={files} devices={[{id: device.id, name: device.name}]} drivers={[{id: driver.id, name: `${driver.firstName} ${driver.lastName}`}]} trailers={trailer.map(t =>({id: t.id, name: t.name}))} groups={[...groups]}/> : <DocumentTable files={files}/>}
+						{mobile ? <DocumentMobile files={files} devices={getDeviceHeader(device)} drivers={getDriverHeader(driver)} trailers={trailer.map(t =>({id: t.id, name: t.name}))} groups={[...groups]}/> : <DocumentTable files={files}/>}
 					</>
 				)
 			}

@@ -301,7 +301,7 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 									let newTrailers = [];
 
 									if (result.length > 0) {
-										newTrailers = result.map((r) => r[0].name);
+										newTrailers = result.map((r) => r);
 									}
 									// show main content
 									appEl.className = appEl.className.replace('hidden', '').trim();
@@ -318,14 +318,10 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 												database={session.database}
 												groups={getGroups(device, user, groups)}
 												device={
-													device !== null
-														? `${device.name} (${device.serialNumber})`
-														: 'none'
+													device 
 												}
 												driver={
-													user !== null
-														? `${user.firstName} ${user.lastName}`
-														: ''
+													user 
 												}
 												trailer={newTrailers}
 											/>

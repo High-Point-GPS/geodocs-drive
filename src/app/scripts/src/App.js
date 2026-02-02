@@ -37,7 +37,9 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 			server: server
 		};
 
-		const queryTags = [device, driver, ...trailer, ...groups];
+		console.log(device, driver, trailer, groups);
+
+		const queryTags = [device.id, driver.id, ...trailer.map(t => t.id), ...groups];
 
 		const messageBody = {
 			database: database,
@@ -91,15 +93,15 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				if (file.fileName) {
 					const associated = [];
 					file.tags.forEach((tag) => {
-						if (tag === device) {
-							associated.push(device);
-						} else if (tag === driver) {
-							associated.push(driver);
+						if (tag === device.id) {
+							associated.push(`${device.name}`);
+						} else if (tag === driver.id) {
+							associated.push(`${driver.firstName} ${driver.lastName}`);
 						}
 
 						trailer.forEach((t) => {
-							if (t === tag) {
-								associated.push(t);
+							if (t.id === tag) {
+								associated.push(t.name);
 							}
 						});
 
@@ -170,6 +172,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 		return () => window.removeEventListener('resize', updateSize);
 	}, []);
 
+
 	return (
 		<Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#f6f8fa', minHeight: '100vh', fontFamily: 'Inter, Roboto, sans-serif' }}>
 			<Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -177,9 +180,9 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
             </Typography>
 			 <Grid container spacing={{xs: 1, sm : 2}}>
                 <InfoCard icon={<GroupsIcon />} title="Groups" subheader={groups.join(', ')} color={{ bg: '#e6f6e9', icon: '#2e7d32' }} />
-                <InfoCard icon={<AirlineSeatReclineNormalIcon />} title="Driver" subheader={driver} color={{ bg: '#e3f2fd', icon: '#1565c0' }} />
-                <InfoCard icon={<LocalShippingIcon />} title="Vehicle" subheader={device} color={{ bg: '#fffde7', icon: '#f9a825' }} />
-                <InfoCard icon={<RvHookupIcon />} title="Trailer(s)" subheader={trailer.join(', ')} color={{ bg: '#f3e5f5', icon: '#6a1b9a' }} />
+                <InfoCard icon={<AirlineSeatReclineNormalIcon />} title="Driver" subheader={`${driver.firstName} ${driver.lastName}`} color={{ bg: '#e3f2fd', icon: '#1565c0' }} />
+                <InfoCard icon={<LocalShippingIcon />} title="Vehicle" subheader={`${device.name}`} color={{ bg: '#fffde7', icon: '#f9a825' }} />
+                <InfoCard icon={<RvHookupIcon />} title="Trailer(s)" subheader={trailer.map(t => t.name).join(', ')} color={{ bg: '#f3e5f5', icon: '#6a1b9a' }} />
             </Grid>
 	
 			{
@@ -189,7 +192,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 					</Box>
 				) : (
 					<>
-						{mobile ? <DocumentMobile files={files} devices={[device]} drivers={[driver]} trailers={[...trailer]} groups={[...groups]}/> : <DocumentTable files={files}/>}
+						{mobile ? <DocumentMobile files={files} devices={[{id: device.id, name: device.name}]} drivers={[{id: driver.id, name: `${driver.firstName} ${driver.lastName}`}]} trailers={trailer.map(t =>({id: t.id, name: t.name}))} groups={[...groups]}/> : <DocumentTable files={files}/>}
 					</>
 				)
 			}

@@ -57,8 +57,8 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups}) => {
         const result = [];
         ownerData.forEach(owner => {
             driverData.forEach(data => {
-                if (data === owner) {
-                    result.push(data);
+                if (data.id === owner) {
+                    result.push(data.name);
                 }
             })
         });

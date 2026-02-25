@@ -11,10 +11,12 @@ import {
   Button,
   DialogActions,
   useMediaQuery,
-  useTheme
+  useTheme,
+  TextField
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CloseIcon from '@mui/icons-material/Close';
+import EmailIcon from '@mui/icons-material/Email';
 
 
 import { Worker, Viewer } from '@react-pdf-viewer/core';
@@ -25,12 +27,17 @@ import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 
 
-const ViewButton = ({ filePath, fileName, database, session, server, onValidationError, onError }) => {
+const ViewButton = ({ filePath, fileName, database, session, server, driverCanSendEmail = false, driver, onValidationError, onError }) => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [fileUrl, setFileUrl] = useState('');
   const [contentType, setContentType] = useState('');
   const [loadingPreview, setLoadingPreview] = useState(true);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -164,6 +171,91 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
     setFileUrl('');
     setContentType('');
     setLoadingPreview(true);
+    setEmailDialogOpen(false);
+    setRecipientEmail('');
+    setEmailError('');
+    setSendingEmail(false);
+    setEmailSent(false);
+  };
+
+  const validateEmail = (email) => {
+    const trimmedEmail = String(email || '').trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(trimmedEmail);
+  };
+
+  const handleOpenEmailDialog = () => {
+    if (!driverCanSendEmail) {
+      return;
+    }
+    setEmailDialogOpen(true);
+    setEmailSent(false);
+  };
+
+  const handleCloseEmailDialog = () => {
+    setEmailDialogOpen(false);
+    setRecipientEmail('');
+    setEmailError('');
+    setEmailSent(false);
+  };
+
+  const handleSendEmail = async () => {
+    if (!driverCanSendEmail) {
+      return;
+    }
+
+    const toEmail = recipientEmail.trim();
+    if (!validateEmail(toEmail)) {
+      setEmailError('Please enter a valid email address.');
+      return;
+    }
+
+    setEmailError('');
+    setSendingEmail(true);
+
+    try {
+      const sessionInfo = {
+        database,
+        sessionId: session.sessionId,
+        userName: session.userName,
+        server
+      };
+
+      const senderEmail = (session?.email || session?.userName || '').trim();
+      const messageBody = {
+        session: sessionInfo,
+        toEmail,
+        driverName: driver ? `${driver.firstName} ${driver.lastName}` : '',
+        fromEmail: senderEmail,
+        file: {
+          filePath,
+          fileName,
+          url: fileUrl,
+          contentType
+        }
+      };
+
+      const response = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/emailFile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(messageBody)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        if (errData.valid === false && onValidationError) onValidationError();
+        onError && onError(errData.error || 'Failed to send email');
+        return;
+      }
+
+      setEmailSent(true);
+      setRecipientEmail('');
+    } catch (err) {
+      console.error(err);
+      onError && onError(err?.message || String(err));
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const renderPreview = () => {
@@ -251,6 +343,17 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
           p: fullScreen ? 2 : 1,
           flexDirection: fullScreen ? 'column' : 'row'
         }}>
+          {driverCanSendEmail && (
+            <Button
+              variant="contained"
+              fullWidth={fullScreen}
+              onClick={handleOpenEmailDialog}
+              startIcon={<EmailIcon />}
+              aria-label="Email file action"
+            >
+              Email File
+            </Button>
+          )}
           <Button
             variant="outlined"
             color="inherit"
@@ -262,6 +365,62 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
             Close
           </Button>
         </DialogActions>
+
+        <Dialog
+          open={emailDialogOpen}
+          onClose={handleCloseEmailDialog}
+          fullWidth
+          maxWidth="sm"
+          aria-labelledby="email-file-dialog"
+        >
+          <DialogTitle id="email-file-dialog" sx={{ fontSize: '1.4rem', fontWeight: 600 }}>
+            Email File
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 1 }}>
+              <TextField
+                fullWidth
+                autoFocus
+                label="Recipient Email"
+                type="email"
+                value={recipientEmail}
+                InputLabelProps={{ sx: { fontSize: '1rem' } }}
+                InputProps={{ sx: { fontSize: '1.05rem' } }}
+                FormHelperTextProps={{ sx: { fontSize: '0.95rem' } }}
+                onChange={(event) => {
+                  setRecipientEmail(event.target.value);
+                  if (emailError) setEmailError('');
+                }}
+                error={Boolean(emailError)}
+                helperText={emailError || 'Enter the email address to send this file to.'}
+              />
+              {emailSent && (
+                <Typography sx={{ mt: 1, fontSize: '1rem', fontWeight: 500 }} color="success.main">
+                  File emailed successfully.
+                </Typography>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2, gap: 1.5 }}>
+            <Button
+              onClick={handleCloseEmailDialog}
+              color="inherit"
+              variant="outlined"
+              disabled={sendingEmail}
+              sx={{ fontSize: '1rem', fontWeight: 600, px: 3, py: 1, minWidth: 120 }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              variant="contained"
+              disabled={sendingEmail}
+              sx={{ fontSize: '1rem', fontWeight: 700, px: 3, py: 1, minWidth: 120 }}
+            >
+              {sendingEmail ? <CircularProgress size={20} color="inherit" /> : 'Send'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Dialog>
     </>
   );

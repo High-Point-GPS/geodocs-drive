@@ -95,6 +95,7 @@
 		"@react-pdf-viewer/default-layout": "^3.12.0",
 		"@tanstack/match-sorter-utils": "^8.8.4",
 		"@tanstack/react-table": "^8.9.3",
+		"ajv-keywords": "^5.1.0",
 		"dayjs": "^1.11.12",
 		"firebase": "^9.23.0",
 		"pdfjs-dist": "^2.16.105",

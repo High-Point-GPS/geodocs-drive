@@ -78,6 +78,8 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 			});
 
 			const config = await configResponse.json();
+	
+			const driverCanSendEmail = Boolean(config?.driverCanSendEmail);
 
 			const response = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/fetchDriveFiles',
 			{
@@ -141,6 +143,8 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 									database={database}
 									session={session}
 									server={server}
+									driverCanSendEmail={driverCanSendEmail}
+									driver={driver}
 									onValidationError={() => setValidationError(true)}
 									onError={handleError}
 								/>

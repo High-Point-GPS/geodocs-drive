@@ -393,6 +393,7 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
                   '& .MuiOutlinedInput-input': {
                     padding: '16.5px 14px', // actual typing area height
                     lineHeight: 1.5,
+                    border: 'none'
                   },
                 }}
                 InputLabelProps={{ sx: { fontSize: '1rem' } }}

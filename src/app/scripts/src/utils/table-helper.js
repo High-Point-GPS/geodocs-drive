@@ -122,8 +122,12 @@ export const columns = [
         },
     }),
     columnHelper.accessor('action', {
-        header: () => 'Action',
-        cell: (info) => info.renderValue(),
+        header: () => 'Actions',
+        cell: (info) => (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+                {info.renderValue()}
+            </Box>
+        ),
     }),
 ];
 

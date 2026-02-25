@@ -6,6 +6,7 @@ import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, But
 
 import DownloadButton from './components/DownloadButton';
 import ViewButton from './components/ViewButton';
+import EmailButton from './components/EmailButton';
 import InfoCard from './components/InfoCard';
 
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -112,6 +113,13 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 			fetchedFiles.forEach(file => {
 				if (file.fileName) {
 					const associated = [];
+					const vehicleData = device && file.tags.includes(device.id)
+						? {
+							name: device?.name ?? null,
+							vehicleIdentificationNumber: device?.vehicleIdentificationNumber ?? null,
+							licensePlate: device?.licensePlate ?? null
+						}
+						: null;
 					file.tags.forEach((tag) => {
 						if (device && tag === device.id) {
 							associated.push(`${device.name}`);
@@ -136,7 +144,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 						...file,
 						associated,
 						action: (
-							<Box sx={{ display: 'flex', gap: '2rem' }}>
+							<>
 								<ViewButton
 									filePath={file.path}
 									fileName={file.fileName}
@@ -145,9 +153,23 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 									server={server}
 									driverCanSendEmail={driverCanSendEmail}
 									driver={driver}
+									vehicleData={vehicleData}
 									onValidationError={() => setValidationError(true)}
 									onError={handleError}
 								/>
+								{driverCanSendEmail && (
+									<EmailButton
+										filePath={file.path}
+										fileName={file.fileName}
+										database={database}
+										session={session}
+										server={server}
+										driver={driver}
+										vehicleData={vehicleData}
+										onValidationError={() => setValidationError(true)}
+										onError={handleError}
+									/>
+								)}
 								{!config.restrictDownload && (
 									<DownloadButton
 										filePath={file.path}
@@ -160,7 +182,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 									/>
 								)}
 							
-							</Box>
+							</>
 						
 						),
 					});

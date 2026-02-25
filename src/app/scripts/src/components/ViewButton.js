@@ -27,7 +27,7 @@ import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 
 
-const ViewButton = ({ filePath, fileName, database, session, server, driverCanSendEmail = false, driver, onValidationError, onError }) => {
+const ViewButton = ({ filePath, fileName, database, session, server, driverCanSendEmail = false, driver, vehicleData, onValidationError, onError }) => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [fileUrl, setFileUrl] = useState('');
@@ -222,10 +222,18 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
       };
 
       const senderEmail = (session?.email || session?.userName || '').trim();
+      const normalizedVehicle = vehicleData
+        ? {
+            name: vehicleData?.name ?? null,
+            vehicleIdentificationNumber: vehicleData?.vehicleIdentificationNumber ?? null,
+            licensePlate: vehicleData?.licensePlate ?? null
+          }
+        : null;
       const messageBody = {
         session: sessionInfo,
         toEmail,
         driverName: driver ? `${driver.firstName} ${driver.lastName}` : '',
+        vehicle: normalizedVehicle,
         fromEmail: senderEmail,
         file: {
           filePath,
@@ -388,15 +396,28 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
                 size="medium"
                 sx={{
                   '& .MuiOutlinedInput-root': {
-                    minHeight: 56, // overall field height
+                    height: 56,
                   },
                   '& .MuiOutlinedInput-input': {
-                    padding: '16.5px 14px', // actual typing area height
-                    lineHeight: 1.5,
-                    border: 'none'
+                    height: '56px !important',
+                    lineHeight: 'normal !important',
+                    boxSizing: 'border-box',
+                    padding: '0 14px !important',
+                    fontSize: '1rem !important',
+                    border: 'none !important'
                   },
                 }}
-                InputLabelProps={{ sx: { fontSize: '1rem' } }}
+                InputLabelProps={{
+                  sx: {
+                    fontSize: '1rem',
+                    top: '50%',
+                    transform: 'translate(14px, -50%) scale(1)',
+                    '&.MuiInputLabel-shrink': {
+                      top: 0,
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }
+                }}
                 FormHelperTextProps={{ sx: { fontSize: '0.95rem' } }}
                 onChange={(event) => {
                   setRecipientEmail(event.target.value);

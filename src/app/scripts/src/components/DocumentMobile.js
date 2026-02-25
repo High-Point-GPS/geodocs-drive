@@ -135,7 +135,7 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups}) => {
                                 </Typography>
                                 <Grid container spacing={2} alignItems="center">
  
-                                    <Grid item xs={10}>
+                                    <Grid item xs={12} sm={9}>
                                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                                             {filterDriverData(file.owners.drivers, drivers).map(d => <Chip key={d} label={d} icon={<AirlineSeatReclineNormalIcon />} sx={{fontSize: '12px', backgroundColor: '#e6f2fd'}}/>)}
                                             {filterDriverData(file.owners.groups, groups).map(g => <Chip key={g} label={g} icon={<GroupsIcon />} sx={{fontSize: '12px', backgroundColor: '#e3f2fd'}} />)}
@@ -145,8 +145,8 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups}) => {
                                     </Grid>
 
             
-                                    <Grid item xs={2}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Grid item xs={12} sm={3}>
+                                        <Box sx={{ display: 'flex', gap: 3, justifyContent: { xs: 'center', sm: 'flex-end' }, mt: { xs: 1, sm: 0 } }}>
                                             {file.action}
                                         </Box>
                                     </Grid>

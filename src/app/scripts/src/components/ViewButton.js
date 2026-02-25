@@ -384,8 +384,18 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
                 label="Recipient Email"
                 type="email"
                 value={recipientEmail}
+                variant="outlined"
+                size="medium"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    minHeight: 56, // overall field height
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    padding: '16.5px 14px', // actual typing area height
+                    lineHeight: 1.5,
+                  },
+                }}
                 InputLabelProps={{ sx: { fontSize: '1rem' } }}
-                InputProps={{ sx: { fontSize: '1.05rem' } }}
                 FormHelperTextProps={{ sx: { fontSize: '0.95rem' } }}
                 onChange={(event) => {
                   setRecipientEmail(event.target.value);

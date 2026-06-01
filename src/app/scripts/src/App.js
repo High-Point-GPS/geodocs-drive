@@ -105,12 +105,13 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 			}
 
 			const data = await response.json();
-			const fetchedFiles = data.files;
+			const fetchedFiles = Array.isArray(data?.files) ? data.files : [];
+			const visibleFiles = fetchedFiles.filter((file) => file?.hideFromDriver !== true);
 
 
 			const transformedFiles = [];
 
-			fetchedFiles.forEach(file => {
+			visibleFiles.forEach(file => {
 				if (file.fileName) {
 					const associated = [];
 					const vehicleData = device && file.tags.includes(device.id)

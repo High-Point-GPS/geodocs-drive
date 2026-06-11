@@ -1,0 +1,17 @@
+{
+  "name": "GeoDocs Drive",
+  "supportEmail": "israel.margulies@highpointgps.com",
+  "version": "0.0.1",
+  "items": [
+    {
+      "url": "./https://high-point-gps.github.io/geodocs-drive/hpgpsFilemanagerDrive.html",
+      "path": "DriveAppLink/",
+      "menuName": {
+        "en": "GeoDocs"
+      },
+      "icon": "./https://high-point-gps.github.io/geodocs-drive/images/icon.svg"
+    }
+  ],
+  "onStartup": true,
+  "onShutdown": true
+}

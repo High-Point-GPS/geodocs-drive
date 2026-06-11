@@ -13,6 +13,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import AirlineSeatReclineNormalIcon from '@mui/icons-material/AirlineSeatReclineNormal';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import RvHookupIcon from '@mui/icons-material/RvHookup';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 
 const App = ({ database, session, server, groups, driver, device, trailer }) => {
@@ -22,14 +23,22 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 	const [openError, setOpenError] = useState(false);
 	const [errorText, setErrorText] = useState('');
 	const [loading, setLoading] = useState(false);
-	
+	// Separate from `loading` so a manual refresh spins the button but keeps the list visible
+	// (the full-page spinner is only for the initial load).
+	const [refreshing, setRefreshing] = useState(false);
+
 	const handleError = (error) => {
 		setErrorText(error);
 		setOpenError(true);
 	}
 
-	const fetchFiles = async() => {
-		setLoading(true);
+	const fetchFiles = async (opts = {}) => {
+		const isRefresh = opts.refresh === true;
+		if (isRefresh) {
+			setRefreshing(true);
+		} else {
+			setLoading(true);
+		}
 
 		const sessionInfo = {
 			database: database,
@@ -100,7 +109,6 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				}
 
 				console.error('Fetched Files failed: ', errorData.error ? errorData.error : '');
-				setLoading(false);
 				return;
 			}
 
@@ -194,9 +202,13 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 
 			} catch (err) {
 				console.error('Error', err);
-				
+
 			} finally {
-				setLoading(false);
+				if (isRefresh) {
+					setRefreshing(false);
+				} else {
+					setLoading(false);
+				}
 			}
 	}
 
@@ -226,9 +238,28 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 
 	return (
 		<Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#f6f8fa', minHeight: '100vh', fontFamily: 'Inter, Roboto, sans-serif' }}>
-			<Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                GeoDocs Portal
-            </Typography>
+			<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+				<Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 0 }}>
+	                GeoDocs Portal
+	            </Typography>
+				<Button
+					variant="outlined"
+					onClick={() => fetchFiles({ refresh: true })}
+					disabled={loading || refreshing}
+					startIcon={refreshing ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}
+					sx={{
+						textTransform: 'none',
+						fontWeight: 600,
+						borderRadius: '10px',
+						borderColor: '#d0d7de',
+						color: '#1f2937',
+						bgcolor: '#fff',
+						'&:hover': { borderColor: '#b6c0cc', bgcolor: '#f3f6f9' },
+					}}
+				>
+					{refreshing ? 'Refreshing…' : 'Refresh'}
+				</Button>
+			</Box>
 			 <Grid container spacing={{xs: 1, sm : 2}}>
                 <InfoCard icon={<GroupsIcon />} title="Groups" subheader={groups.join(', ')} color={{ bg: '#e6f6e9', icon: '#2e7d32' }} />
                 <InfoCard icon={<AirlineSeatReclineNormalIcon />} title="Driver" subheader={`${driver ? `${driver.firstName} ${driver.lastName}` : 'No Driver Selected'}`} color={{ bg: '#e3f2fd', icon: '#1565c0' }} />

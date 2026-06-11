@@ -20,6 +20,8 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import RvHookupIcon from '@mui/icons-material/RvHookup';
 import SearchIcon from '@mui/icons-material/Search';
 
+import { collapseCompanyGroup } from '../utils/formatter';
+
 const DocumentMobile = ({ files, devices, drivers, trailers, groups}) => {
     const [globalFilter, setGlobalFilter] = useState('');
     const [filteredFiles, setFilteredFiles] = useState([]);
@@ -55,10 +57,13 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups}) => {
 
     const filterDriverData = (ownerData, driverData) => {
         const result = [];
-        ownerData.forEach(owner => {
-            driverData.forEach(data => {
-                if (data.id === owner) {
+        (ownerData || []).forEach(owner => {
+            (driverData || []).forEach(data => {
+                if (data && data.id === owner) {
                     result.push(data.name);
+                } else if (data === owner) {
+                    // Groups arrive as plain name strings, not {id, name} objects.
+                    result.push(data);
                 }
             })
         });
@@ -138,7 +143,7 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups}) => {
                                     <Grid item xs={12} sm={9}>
                                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                                             {filterDriverData(file.owners.drivers, drivers).map(d => <Chip key={d} label={d} icon={<AirlineSeatReclineNormalIcon />} sx={{fontSize: '12px', backgroundColor: '#e6f2fd'}}/>)}
-                                            {filterDriverData(file.owners.groups, groups).map(g => <Chip key={g} label={g} icon={<GroupsIcon />} sx={{fontSize: '12px', backgroundColor: '#e3f2fd'}} />)}
+                                            {collapseCompanyGroup(filterDriverData(file.owners.groups, groups)).map(g => <Chip key={g} label={g} icon={<GroupsIcon />} sx={{fontSize: '12px', backgroundColor: '#e3f2fd'}} />)}
                                             {filterDriverData(file.owners.vehicles, devices).map(v => <Chip key={v} label={v} icon={<LocalShippingIcon />} sx={{fontSize: '12px', backgroundColor: '#fffde7'}} />)}
                                             {filterDriverData(file.owners.trailers, trailers).map(t => <Chip key={t} label={t} icon={<RvHookupIcon />} sx={{fontSize: '12px', backgroundColor: '#f3e5f5'}} />)}
                                         </Box>

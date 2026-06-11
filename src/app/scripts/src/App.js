@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import DocumentTable from './components/DocumentTable';
 import DocumentMobile from './components/DocumentMobile';
 
-import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Grid } from '@mui/material';
+import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Grid, IconButton, Tooltip } from '@mui/material';
 
 import DownloadButton from './components/DownloadButton';
 import ViewButton from './components/ViewButton';
@@ -14,6 +14,8 @@ import AirlineSeatReclineNormalIcon from '@mui/icons-material/AirlineSeatRecline
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import RvHookupIcon from '@mui/icons-material/RvHookup';
 import RefreshIcon from '@mui/icons-material/Refresh';
+
+import { isCompanyGroupLabel } from './utils/formatter';
 
 
 const App = ({ database, session, server, groups, driver, device, trailer }) => {
@@ -121,7 +123,17 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 
 			visibleFiles.forEach(file => {
 				if (file.fileName) {
+					// {kind, label} entries so the table can show a matching icon per
+					// association; deduped since tags can repeat.
 					const associated = [];
+					const seenAssociations = new Set();
+					const addAssociated = (kind, label) => {
+						const key = `${kind}|${label}`;
+						if (label && !seenAssociations.has(key)) {
+							seenAssociations.add(key);
+							associated.push({ kind, label });
+						}
+					};
 					const vehicleData = device && file.tags.includes(device.id)
 						? {
 							name: device?.name ?? null,
@@ -131,27 +143,35 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 						: null;
 					file.tags.forEach((tag) => {
 						if (device && tag === device.id) {
-							associated.push(`${device.name}`);
+							addAssociated('vehicle', `${device.name}`);
 						} else if (driver && tag === driver.id) {
-							associated.push(`${driver.firstName} ${driver.lastName}`);
+							addAssociated('driver', `${driver.firstName} ${driver.lastName}`);
 						}
 
 						trailer.forEach((t) => {
 							if (t.id === tag) {
-								associated.push(t.id);
+								addAssociated('trailer', t.name || t.id);
 							}
 						});
 
 						groups.forEach((g) => {
 							if (g === tag) {
-								associated.push(g);
+								addAssociated('group', g);
 							}
 						});
 					});
 
+					// "Company Group" includes every other group — drop the redundant ones.
+					const hasCompanyGroup = associated.some(
+						(a) => a.kind === 'group' && isCompanyGroupLabel(a.label)
+					);
+					const associatedDisplay = hasCompanyGroup
+						? associated.filter((a) => a.kind !== 'group' || isCompanyGroupLabel(a.label))
+						: associated;
+
 					transformedFiles.push({
 						...file,
-						associated,
+						associated: associatedDisplay,
 						action: (
 							<>
 								<ViewButton
@@ -242,23 +262,34 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				<Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 0 }}>
 	                GeoDocs Portal
 	            </Typography>
-				<Button
-					variant="outlined"
-					onClick={() => fetchFiles({ refresh: true })}
-					disabled={loading || refreshing}
-					startIcon={refreshing ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}
-					sx={{
-						textTransform: 'none',
-						fontWeight: 600,
-						borderRadius: '10px',
-						borderColor: '#d0d7de',
-						color: '#1f2937',
-						bgcolor: '#fff',
-						'&:hover': { borderColor: '#b6c0cc', bgcolor: '#f3f6f9' },
-					}}
-				>
-					{refreshing ? 'Refreshing…' : 'Refresh'}
-				</Button>
+				<Tooltip title={refreshing ? 'Refreshing…' : 'Refresh'}>
+					{/* Fixed 40px square: Geotab Drive's own CSS stretches buttons full
+					    width, so every dimension is pinned to keep this a small icon. */}
+					<span style={{ marginLeft: 'auto', flex: '0 0 auto' }}>
+						<IconButton
+							onClick={() => fetchFiles({ refresh: true })}
+							disabled={loading || refreshing}
+							aria-label="Refresh documents"
+							sx={{
+								width: 40,
+								height: 40,
+								minWidth: 40,
+								maxWidth: 40,
+								border: '1px solid #d0d7de',
+								borderRadius: '10px',
+								color: '#1f2937',
+								bgcolor: '#fff',
+								'&:hover': { borderColor: '#b6c0cc', bgcolor: '#f3f6f9' },
+							}}
+						>
+							{refreshing ? (
+								<CircularProgress size={18} color="inherit" />
+							) : (
+								<RefreshIcon fontSize="small" />
+							)}
+						</IconButton>
+					</span>
+				</Tooltip>
 			</Box>
 			 <Grid container spacing={{xs: 1, sm : 2}}>
                 <InfoCard icon={<GroupsIcon />} title="Groups" subheader={groups.join(', ')} color={{ bg: '#e6f6e9', icon: '#2e7d32' }} />

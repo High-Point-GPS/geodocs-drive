@@ -5,23 +5,59 @@ import dayjs from 'dayjs';
 import { rankItem, compareItems } from '@tanstack/match-sorter-utils';
 import { Box, Chip, Typography, Tooltip } from '@mui/material';
 
+import GroupsIcon from '@mui/icons-material/Groups';
+import AirlineSeatReclineNormalIcon from '@mui/icons-material/AirlineSeatReclineNormal';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import RvHookupIcon from '@mui/icons-material/RvHookup';
+
 const columnHelper = createColumnHelper();
 
+// Same icon + tint per association kind as the info cards at the top of the page.
+const KIND_CHIP = {
+    group: { Icon: GroupsIcon, bg: '#e6f6e9', color: '#2e7d32' },
+    driver: { Icon: AirlineSeatReclineNormalIcon, bg: '#e3f2fd', color: '#1565c0' },
+    vehicle: { Icon: LocalShippingIcon, bg: '#fffde7', color: '#f9a825' },
+    trailer: { Icon: RvHookupIcon, bg: '#f3e5f5', color: '#6a1b9a' },
+};
+
+// Associations as icon chips: entries are {kind, label} built in App.js.
+const MAX_ASSOCIATION_CHIPS = 6;
 const displayCell = (value) => {
-    const content = `${value.slice(0, 5).join(', ')}${
-        value.length > 5 ? '...' : ''
-    }`;
+    const items = value.slice(0, MAX_ASSOCIATION_CHIPS);
+    const overflow = value.length - items.length;
     return (
-        <>
-            {value.length > 5 ? (
-                <Tooltip title={`${value.join(', ')}`}>
-                    <Typography variant="h5">{content}</Typography>
+        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {items.map((item) => {
+                const meta = KIND_CHIP[item.kind] || KIND_CHIP.group;
+                const KindIcon = meta.Icon;
+                return (
+                    <Chip
+                        key={`${item.kind}-${item.label}`}
+                        label={item.label}
+                        icon={<KindIcon sx={{ fontSize: 18 }} />}
+                        sx={{
+                            fontSize: '1.1rem',
+                            backgroundColor: meta.bg,
+                            '& .MuiChip-icon': { color: meta.color },
+                        }}
+                    />
+                );
+            })}
+            {overflow > 0 && (
+                <Tooltip title={value.map((v) => v.label).join(', ')}>
+                    <Chip label={`+${overflow} more`} sx={{ fontSize: '1.1rem' }} />
                 </Tooltip>
-            ) : (
-                <Typography variant="h5">{content}</Typography>
             )}
-        </>
+        </Box>
     );
+};
+
+// Association entries are objects; everything else stays as-is.
+const toSearchText = (cellValue) => {
+    if (Array.isArray(cellValue)) {
+        return cellValue.map((v) => (v && v.label ? v.label : v)).join(' ');
+    }
+    return String(cellValue);
 };
 
 const fuzzySort = (rowA, rowB, columnId) => {
@@ -146,22 +182,15 @@ export const fuzzyFilter = (row, columnId, value, addMeta) => {
 
 
 export const stringMatchFilter = (row, columnId, filterValue) => {
-    let rowValue = row.getValue(columnId);
+    const rowValue = row.getValue(columnId);
     if (rowValue == null) return false;
-    // If it's an array, join its elements into a string.
-    if (Array.isArray(rowValue)) {
-        rowValue = rowValue.join(' ');
-    }
-    return String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase());
+    return toSearchText(rowValue).toLowerCase().includes(String(filterValue).toLowerCase());
 };
 
 export const globalStringFilter = (row, _, filterValue) => {
     return row.getAllCells().some(cell => {
-        let cellValue = cell.getValue();
+        const cellValue = cell.getValue();
         if (cellValue == null) return false;
-        if (Array.isArray(cellValue)) {
-        cellValue = cellValue.join(' ');
-        }
-        return String(cellValue).toLowerCase().includes(String(filterValue).toLowerCase());
+        return toSearchText(cellValue).toLowerCase().includes(String(filterValue).toLowerCase());
     });
 };

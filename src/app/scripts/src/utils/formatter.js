@@ -1,3 +1,13 @@
+// Geotab's root "Company Group" contains every other group, so when it appears in a
+// list of group names the rest are redundant for display — show just it.
+export const isCompanyGroupLabel = (label) =>
+	String(label).trim().toLowerCase() === 'company group';
+
+export const collapseCompanyGroup = (labels) => {
+	if (!Array.isArray(labels)) return labels || [];
+	const company = labels.find((l) => isCompanyGroupLabel(l));
+	return company ? [company] : labels;
+};
 
 export const getGroups = (device, user, groups) => {
 	let deviceGroups = [];

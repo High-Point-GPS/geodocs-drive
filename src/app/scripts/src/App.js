@@ -263,18 +263,22 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 	                GeoDocs Portal
 	            </Typography>
 				<Tooltip title={refreshing ? 'Refreshing…' : 'Refresh'}>
-					{/* Fixed 40px square: Geotab Drive's own CSS stretches buttons full
-					    width, so every dimension is pinned to keep this a small icon. */}
+					{/* Drive's own CSS stretches buttons full width, so the width is pinned
+					    to fit-content to keep it sized to its label. */}
 					<span style={{ marginLeft: 'auto', flex: '0 0 auto' }}>
-						<IconButton
+						<Button
 							onClick={() => fetchFiles({ refresh: true })}
 							disabled={loading || refreshing}
 							aria-label="Refresh documents"
+							variant="outlined"
+							startIcon={refreshing ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon fontSize="small" />}
 							sx={{
-								width: 40,
+								width: 'fit-content',
+								minWidth: 0,
 								height: 40,
-								minWidth: 40,
-								maxWidth: 40,
+								px: 1.75,
+								textTransform: 'none',
+								fontWeight: 600,
 								border: '1px solid #d0d7de',
 								borderRadius: '10px',
 								color: '#1f2937',
@@ -282,12 +286,8 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 								'&:hover': { borderColor: '#b6c0cc', bgcolor: '#f3f6f9' },
 							}}
 						>
-							{refreshing ? (
-								<CircularProgress size={18} color="inherit" />
-							) : (
-								<RefreshIcon fontSize="small" />
-							)}
-						</IconButton>
+							{refreshing ? 'Refreshing…' : 'Refresh'}
+						</Button>
 					</span>
 				</Tooltip>
 			</Box>

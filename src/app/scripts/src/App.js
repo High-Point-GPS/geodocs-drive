@@ -20,7 +20,7 @@ import AddAPhotoOutlinedIcon from '@mui/icons-material/AddAPhotoOutlined';
 import { isCompanyGroupLabel } from './utils/formatter';
 
 
-const App = ({ database, session, server, groups, driver, device, trailer }) => {
+const App = ({ api, database, session, server, groups, driver, device, trailer }) => {
 	const [files, setFiles] = useState([]);
 	const [mobile, setMobile] = useState(false);
 	const [validationError, setValidationError] = useState(false);
@@ -355,6 +355,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				session={session}
 				server={server}
 				documentTypes={Array.isArray(config.documentTypes) ? config.documentTypes : []}
+				api={api}
 				driver={driver}
 				device={device}
 				trailer={trailer}

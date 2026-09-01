@@ -1,5 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+	Autocomplete,
 	Box,
 	Button,
 	Checkbox,
@@ -88,6 +89,7 @@ const UploadDialog = ({
 	session,
 	server,
 	documentTypes = [],
+	api,
 	driver,
 	device,
 	trailer = [],
@@ -109,6 +111,48 @@ const UploadDialog = ({
 	const [attachDriver, setAttachDriver] = useState(true);
 	const [attachTrailers, setAttachTrailers] = useState(true);
 
+	// The vehicle is whichever one the Drive app is on — it is shown, not chosen, so a
+	// document cannot be filed against the wrong truck by a mis-tap. Only when the app
+	// reports no vehicle (the driver is logged in without one) does a picker appear.
+	const [pickedVehicle, setPickedVehicle] = useState(null);
+	const [vehicleOptions, setVehicleOptions] = useState([]);
+	const [vehiclesLoading, setVehiclesLoading] = useState(false);
+	const [vehiclesFailed, setVehiclesFailed] = useState(false);
+
+	// The vehicle actually being attached: the trip's, else whatever was picked. Off a
+	// trip there is no separate tickbox — picking a vehicle is the decision to attach it,
+	// and clearing the field is the decision not to.
+	const activeVehicle = device || pickedVehicle;
+	const mustPickVehicle = !device;
+	const vehicleAttached = device ? attachVehicle : !!pickedVehicle;
+
+	// Only fetched when there is no trip vehicle and the dialog is actually open, so the
+	// common case costs nothing.
+	useEffect(() => {
+		if (!open || device || !api) return;
+		if (vehicleOptions.length || vehiclesLoading) return;
+
+		setVehiclesLoading(true);
+		setVehiclesFailed(false);
+		api.call(
+			'Get',
+			{ typeName: 'Device', search: { fromDate: new Date().toISOString() } },
+			(result) => {
+				const list = (Array.isArray(result) ? result : [])
+					.filter((d) => d && d.id && d.name)
+					.map((d) => ({ id: d.id, name: d.name }))
+					.sort((a, b) => a.name.localeCompare(b.name));
+				setVehicleOptions(list);
+				setVehiclesLoading(false);
+			},
+			(err) => {
+				console.error('Could not load vehicles:', err);
+				setVehiclesFailed(true);
+				setVehiclesLoading(false);
+			}
+		);
+	}, [open, device, api, vehicleOptions.length, vehiclesLoading]);
+
 	const fileInputRef = useRef(null);
 	const cameraInputRef = useRef(null);
 
@@ -122,6 +166,7 @@ const UploadDialog = ({
 		setAttachVehicle(true);
 		setAttachDriver(true);
 		setAttachTrailers(true);
+		setPickedVehicle(null);
 	};
 
 	const handleClose = () => {
@@ -148,7 +193,7 @@ const UploadDialog = ({
 	};
 
 	const attachedCount =
-		(attachVehicle && device ? 1 : 0) +
+		(vehicleAttached && activeVehicle ? 1 : 0) +
 		(attachDriver && driver ? 1 : 0) +
 		(attachTrailers ? trailers.length : 0);
 
@@ -161,14 +206,14 @@ const UploadDialog = ({
 
 		try {
 			const owners = { vehicles: [], drivers: [], trailers: [], groups: [] };
-			if (attachVehicle && device) owners.vehicles.push(device.id);
+			if (vehicleAttached && activeVehicle) owners.vehicles.push(activeVehicle.id);
 			if (attachDriver && driver) owners.drivers.push(driver.id);
 			if (attachTrailers) trailers.forEach((t) => owners.trailers.push(t.id));
 
 			// Display names stored alongside the ids, so the web app and the expiry email
 			// can show them without resolving anything through Geotab.
 			const ownerNames = {
-				vehicles: attachVehicle && device ? [device.name] : [],
+				vehicles: vehicleAttached && activeVehicle ? [activeVehicle.name] : [],
 				drivers: attachDriver && driver ? [`${driver.firstName} ${driver.lastName}`] : [],
 				trailers: attachTrailers ? trailers.map((t) => t.name) : [],
 				groups: [],
@@ -373,13 +418,61 @@ const UploadDialog = ({
 						Attach to
 					</Typography>
 					<Box sx={{ display: 'flex', flexDirection: 'column' }}>
-						{attachRow(
-							<LocalShippingIcon sx={{ color: '#f9a825' }} />,
-							'Vehicle',
-							device ? device.name : 'No vehicle selected',
-							attachVehicle && !!device,
-							setAttachVehicle,
-							!device || uploading
+						{/* On a trip the vehicle is shown, not chosen — it is whichever one the
+						    Drive app is on, so a document cannot be filed against the wrong
+						    truck by a mis-tap. The tickbox only says whether to attach it. */}
+						{!mustPickVehicle &&
+							attachRow(
+								<LocalShippingIcon sx={{ color: '#f9a825' }} />,
+								'Vehicle',
+								device.name,
+								attachVehicle,
+								setAttachVehicle,
+								uploading
+							)}
+						{/* Not on a trip: no vehicle to show, so the driver names one. */}
+						{mustPickVehicle && (
+							<Box sx={{ pb: 1.5, pt: 0.5 }}>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+									<LocalShippingIcon sx={{ color: '#f9a825' }} />
+									<Typography sx={{ fontSize: 13, color: '#64748b' }}>
+										Vehicle — you are not on a trip
+									</Typography>
+								</Box>
+								<Autocomplete
+									options={vehicleOptions}
+									value={pickedVehicle}
+									onChange={(_, v) => setPickedVehicle(v)}
+									getOptionLabel={(o) => (o && o.name) || ''}
+									isOptionEqualToValue={(o, v) => o.id === v.id}
+									loading={vehiclesLoading}
+									disabled={uploading || vehiclesFailed}
+									size="small"
+									noOptionsText={vehiclesLoading ? 'Loading…' : 'No vehicles found'}
+									renderInput={(params) => (
+										<TextField
+											{...params}
+											label="Which vehicle?"
+											placeholder="Search vehicles…"
+											helperText={
+												vehiclesFailed
+													? 'Could not load vehicles. Attach to yourself instead.'
+													: 'Optional — leave empty to attach this to yourself only.'
+											}
+											error={vehiclesFailed}
+											InputProps={{
+												...params.InputProps,
+												endAdornment: (
+													<>
+														{vehiclesLoading ? <CircularProgress size={16} /> : null}
+														{params.InputProps.endAdornment}
+													</>
+												),
+											}}
+										/>
+									)}
+								/>
+							</Box>
 						)}
 						{attachRow(
 							<AirlineSeatReclineNormalIcon sx={{ color: '#1565c0' }} />,

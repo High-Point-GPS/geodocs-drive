@@ -97,6 +97,10 @@ const UploadDialog = ({
 	const [file, setFile] = useState(null);
 	const [documentType, setDocumentType] = useState('');
 	const [description, setDescription] = useState('');
+	// Optional, and a native date input on purpose: it opens the phone's own date wheel,
+	// costs no bundle (the Drive app has no date-picker dependency), and takes the
+	// YYYY-MM-DD the backend already parses.
+	const [expiryDate, setExpiryDate] = useState('');
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState('');
 
@@ -173,6 +177,7 @@ const UploadDialog = ({
 		setFile(null);
 		setDocumentType('');
 		setDescription('');
+		setExpiryDate('');
 		setError('');
 		setAttachVehicle(true);
 		setAttachDriver(true);
@@ -254,6 +259,7 @@ const UploadDialog = ({
 						tags,
 						documentType: documentType || undefined,
 						description: description || undefined,
+						expiryDate: expiryDate || undefined,
 						driverName: driver ? `${driver.firstName} ${driver.lastName}` : undefined,
 					}),
 				}
@@ -304,39 +310,74 @@ const UploadDialog = ({
 
 	return (
 		<Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" scroll="paper">
-			<DialogTitle
-				component="div"
-				sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pb: 1 }}
-			>
-				<Typography component="h2" sx={{ fontWeight: 700, fontSize: 20 }}>
+			{/* The close button is taken out of the flow (absolute) so the heading is
+			    centred on the dialog itself rather than on the space left beside it. */}
+			<DialogTitle component="div" sx={{ position: 'relative', pb: 1, px: 6 }}>
+				<Typography component="h2" sx={{ fontWeight: 700, fontSize: 20, textAlign: 'center' }}>
 					Add a document
 				</Typography>
-				<IconButton aria-label="close" onClick={handleClose} disabled={uploading}>
+				<IconButton
+					aria-label="close"
+					onClick={handleClose}
+					disabled={uploading}
+					sx={{ position: 'absolute', top: 8, right: 8 }}
+				>
 					<CloseIcon />
 				</IconButton>
 			</DialogTitle>
 
 			<DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-				{/* Two explicit buttons rather than one file field: on a phone "Take photo"
-				    should open the camera directly, which is what `capture` does. */}
-				<Box sx={{ display: 'flex', gap: 1 }}>
+				{/* Picking the file is the first thing a driver does, so it sits at the top,
+				    centred. Two explicit buttons rather than one file field: on a phone
+				    "Take photo" should open the camera directly, which is what `capture` does. */}
+				<Box
+					sx={{
+						display: 'flex',
+						flexWrap: 'wrap',
+						gap: 1,
+						justifyContent: 'center',
+						alignItems: 'center',
+					}}
+				>
 					<Button
-						fullWidth
 						variant="outlined"
 						startIcon={<PhotoCameraOutlinedIcon />}
 						onClick={() => cameraInputRef.current && cameraInputRef.current.click()}
 						disabled={uploading}
-						sx={{ textTransform: 'none', fontWeight: 600, py: 1.25, borderRadius: '10px' }}
+						sx={{
+							textTransform: 'none',
+							fontWeight: 600,
+							py: 1.25,
+							px: 2.5,
+							borderRadius: '10px',
+							// Drive's own CSS stretches buttons full width, so the width is
+							// driven here. The pair shares one row and stays centred: a fixed
+							// min-width overflowed a narrow phone's content box by a few
+							// pixels and wrapped them onto separate lines.
+							width: 'auto',
+							minWidth: 0,
+							maxWidth: 176,
+							flex: '1 1 0',
+						}}
 					>
 						Take photo
 					</Button>
 					<Button
-						fullWidth
 						variant="outlined"
 						startIcon={<AttachFileOutlinedIcon />}
 						onClick={() => fileInputRef.current && fileInputRef.current.click()}
 						disabled={uploading}
-						sx={{ textTransform: 'none', fontWeight: 600, py: 1.25, borderRadius: '10px' }}
+						sx={{
+							textTransform: 'none',
+							fontWeight: 600,
+							py: 1.25,
+							px: 2.5,
+							borderRadius: '10px',
+							width: 'auto',
+							minWidth: 0,
+							maxWidth: 176,
+							flex: '1 1 0',
+						}}
 					>
 						Choose file
 					</Button>
@@ -412,6 +453,22 @@ const UploadDialog = ({
 						))}
 					</TextField>
 				)}
+
+				<TextField
+					label="Expires on (optional)"
+					type="date"
+					value={expiryDate}
+					onChange={(e) => setExpiryDate(e.target.value)}
+					fullWidth
+					disabled={uploading}
+					// type="date" renders its own placeholder, so the label must not sit on top of it.
+					InputLabelProps={{ shrink: true }}
+					helperText={
+						expiryDate
+							? 'Reminder emails go out before this date.'
+							: 'Set this for a permit or inspection that runs out.'
+					}
+				/>
 
 				<TextField
 					label="Notes (optional)"

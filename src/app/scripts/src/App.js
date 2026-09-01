@@ -8,12 +8,14 @@ import DownloadButton from './components/DownloadButton';
 import ViewButton from './components/ViewButton';
 import EmailButton from './components/EmailButton';
 import InfoCard from './components/InfoCard';
+import UploadDialog from './components/UploadDialog';
 
 import GroupsIcon from '@mui/icons-material/Groups';
 import AirlineSeatReclineNormalIcon from '@mui/icons-material/AirlineSeatReclineNormal';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import RvHookupIcon from '@mui/icons-material/RvHookup';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AddAPhotoOutlinedIcon from '@mui/icons-material/AddAPhotoOutlined';
 
 import { isCompanyGroupLabel } from './utils/formatter';
 
@@ -28,6 +30,11 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 	// Separate from `loading` so a manual refresh spins the button but keeps the list visible
 	// (the full-page spinner is only for the initial load).
 	const [refreshing, setRefreshing] = useState(false);
+	// The database config drives what a driver is allowed to do here (download, upload)
+	// and the fleet's document-type list. Held in state — it was previously read inside
+	// fetchFiles and thrown away, but the upload button needs it too.
+	const [config, setConfig] = useState({});
+	const [uploadOpen, setUploadOpen] = useState(false);
 
 	const handleError = (error) => {
 		setErrorText(error);
@@ -90,6 +97,7 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 			});
 
 			const config = await configResponse.json();
+			setConfig(config || {});
 	
 			const driverCanSendEmail = Boolean(config?.driverCanSendEmail);
 
@@ -262,10 +270,34 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 				<Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 0 }}>
 	                GeoDocs Portal
 	            </Typography>
+				{config.driverCanUpload === true && (
+					<Button
+						onClick={() => setUploadOpen(true)}
+						startIcon={<AddAPhotoOutlinedIcon />}
+						variant="contained"
+						sx={{
+							textTransform: 'none',
+							fontWeight: 700,
+							borderRadius: '10px',
+							px: 2,
+							flex: '0 0 auto',
+							marginLeft: 'auto',
+						}}
+					>
+						Add document
+					</Button>
+				)}
 				<Tooltip title={refreshing ? 'Refreshing…' : 'Refresh'}>
 					{/* Drive's own CSS stretches buttons full width, so the width is pinned
-					    to fit-content to keep it sized to its label. */}
-					<span style={{ marginLeft: 'auto', flex: '0 0 auto' }}>
+					    to fit-content to keep it sized to its label. Only this button pushes
+					    itself right when it is alone; with Add document present, that one
+					    does, and the pair stays together. */}
+					<span
+						style={{
+							marginLeft: config.driverCanUpload === true ? 0 : 'auto',
+							flex: '0 0 auto',
+						}}
+					>
 						<Button
 							onClick={() => fetchFiles({ refresh: true })}
 							disabled={loading || refreshing}
@@ -309,6 +341,24 @@ const App = ({ database, session, server, groups, driver, device, trailer }) => 
 					</>
 				)
 			}
+
+			<UploadDialog
+				open={uploadOpen}
+				onClose={() => setUploadOpen(false)}
+				onUploaded={() => {
+					setUploadOpen(false);
+					// Re-fetch rather than splicing the new row in: the list the driver sees
+					// is built from a tag query, and this keeps one source of truth for it.
+					fetchFiles({ refresh: true });
+				}}
+				database={database}
+				session={session}
+				server={server}
+				documentTypes={Array.isArray(config.documentTypes) ? config.documentTypes : []}
+				driver={driver}
+				device={device}
+				trailer={trailer}
+			/>
 
 			<Dialog
 				open={validationError}

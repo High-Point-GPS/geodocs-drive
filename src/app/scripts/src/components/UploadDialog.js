@@ -129,8 +129,14 @@ const UploadDialog = ({
 	// Only fetched when there is no trip vehicle and the dialog is actually open, so the
 	// common case costs nothing.
 	useEffect(() => {
-		if (!open || device || !api) return;
-		if (vehicleOptions.length || vehiclesLoading) return;
+		// Closing resets the attempt, so reopening retries after a failure.
+		if (!open) {
+			vehiclesRequestedRef.current = false;
+			return;
+		}
+		if (device || !api) return;
+		if (vehiclesRequestedRef.current) return;
+		vehiclesRequestedRef.current = true;
 
 		setVehiclesLoading(true);
 		setVehiclesFailed(false);
@@ -151,10 +157,15 @@ const UploadDialog = ({
 				setVehiclesLoading(false);
 			}
 		);
-	}, [open, device, api, vehicleOptions.length, vehiclesLoading]);
+	}, [open, device, api]);
 
 	const fileInputRef = useRef(null);
 	const cameraInputRef = useRef(null);
+	// One attempt per time the dialog is opened. Without this, a lookup that comes back
+	// empty or fails leaves the effect's guard conditions exactly as they started, and
+	// the state change from finishing re-runs it — an unbounded retry loop against
+	// Geotab for precisely the drivers whose list is empty or erroring.
+	const vehiclesRequestedRef = useRef(false);
 
 	const typeRequired = documentTypes.length > 0;
 
@@ -448,7 +459,7 @@ const UploadDialog = ({
 									loading={vehiclesLoading}
 									disabled={uploading || vehiclesFailed}
 									size="small"
-									noOptionsText={vehiclesLoading ? 'Loading…' : 'No vehicles found'}
+									noOptionsText={vehiclesLoading ? 'Loading…' : 'No vehicles available to you'}
 									renderInput={(params) => (
 										<TextField
 											{...params}

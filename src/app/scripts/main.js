@@ -10,9 +10,19 @@ import { getGroups } from './src/utils/formatter';
 
 const sessionInfo = {};
 let eulaAcceptedFlag = true;
+let appRoot = null;
+let appRootContainer = null;
+
+// Drive's own page also has #app and #scroll-content, earlier in the document, so a
+// document-wide lookup returns Drive's elements and hiding them blanks Drive's page.
+// Our elements carry their own ids and are only ever looked up inside our own root.
+const addinEl = (id) => {
+	const root = document.getElementById('HPGPS-drive');
+	return root ? root.querySelector('#' + id) : null;
+};
 
 const showModal = (shouldShow) => {
-	const backdrop = document.getElementById('eula-modal-backdrop');
+	const backdrop = addinEl('eula-modal-backdrop');
 
 	if (backdrop) {
 		backdrop.style.display = shouldShow ? 'flex' : 'none';
@@ -25,8 +35,8 @@ const handleButtonClick = async (buttonValue, api) => {
     showModal(false);
 
     if (buttonValue === 'Decline') {
-		const container = document.getElementById('scroll-content');
-		container.style.display = 'none';
+		const container = addinEl('hpgps-scroll-content');
+		if (container) container.style.display = 'none';
     } else if (buttonValue === 'Accept') {
         try {
             // Replace with your actual Firebase endpoint URL
@@ -98,11 +108,6 @@ const isEulaAccepted = async (userName, api) => {
 geotab.addin.hpgpsFilemanagerDrive = function () {
 	'use strict';
 
-	// the root container
-	var elAddin = document.getElementById('scroll-content');
-
-	var appEl = document.getElementById('app');
-
 	return {
 		/**
 		 * Startup Add-Ins are executed when a driver logs in to the Drive App for the first time.
@@ -133,13 +138,13 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 		initialize: function (freshApi, freshState, initializeCallback) {
 			// Loading translations if available
 			if (freshState.translate) {
-				freshState.translate(elAddin || '');
+				freshState.translate(addinEl('hpgps-scroll-content') || '');
 			}
 
 			function waitForEulaResponse() {
 				return new Promise((resolve) => {
-					const acceptButton = document.getElementById('eula-accept-button');
-					const declineButton = document.getElementById('eula-decline-button');
+					const acceptButton = addinEl('eula-accept-button');
+					const declineButton = addinEl('eula-decline-button');
 					acceptButton.onclick = null;
 					declineButton.onclick = null;
 					acceptButton.onclick = async () => {
@@ -170,8 +175,10 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 					if (!accepted) {
 						// User declined, set flag and hide content
 						eulaAcceptedFlag = false;
-						const container = document.getElementById('scroll-content');
+						const container = addinEl('hpgps-scroll-content');
 						if (container) container.style.display = 'none';
+						// Still hand control back so focus() runs and shows the "EULA Declined" note.
+						initializeCallback();
 						return;
 					}
 				}
@@ -304,13 +311,19 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 										newTrailers = result.map((r) => r);
 									}
 									// show main content
-									appEl.className = appEl.className.replace('hidden', '').trim();
+									const appEl = addinEl('hpgps-app');
+									if (appEl) appEl.className = appEl.className.replace('hidden', '').trim();
 
-									const container = document.getElementById('scroll-content');
+									const container = addinEl('hpgps-scroll-content');
 
 									if (container) {
-										const root = createRoot(container);
-										root.render(
+										// Recreate the root if Drive has re-injected our markup since it was made.
+										if (!appRoot || appRootContainer !== container) {
+											if (appRoot) appRoot.unmount();
+											appRoot = createRoot(container);
+											appRootContainer = container;
+										}
+										appRoot.render(
 											<App
 												api={freshApi}
 												session={session}
@@ -335,7 +348,10 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 						}
 					);
 				} else {
-					const container = document.getElementById('scroll-content');
+					// #hpgps-app starts out hidden; unhide it or the message below never shows.
+					const appEl = addinEl('hpgps-app');
+					if (appEl) appEl.className = appEl.className.replace('hidden', '').trim();
+					const container = addinEl('hpgps-scroll-content');
 					if (container) {
 						container.style.display = 'block';
 						container.innerHTML = `
@@ -359,7 +375,13 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 		 */
 		blur: function () {
 			// hide main content
-			elAddin.innerHTML = '';
+			if (appRoot) {
+				appRoot.unmount();
+				appRoot = null;
+				appRootContainer = null;
+			}
+			const container = addinEl('hpgps-scroll-content');
+			if (container) container.innerHTML = '';
 		},
 		/**
 		 * Shutdown Add-Ins are executed when the final driver logs out of the Drive App.

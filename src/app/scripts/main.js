@@ -161,6 +161,9 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 			}
 
 			 freshApi.getSession(async (session, server) => {
+				// Geotab database names are case-insensitive; GeoDocs files everything
+				// under the lowercase name (as the GeoDocs add-in does).
+				if (typeof session.database === 'string') session.database = session.database.toLowerCase();
                     Object.assign(sessionInfo, {
                     database: session.database,
                     userName: session.userName,
@@ -210,6 +213,9 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 
 			// getting the current user to display in the UI
 			freshApi.getSession(async (session, server) => {
+				// Geotab database names are case-insensitive; GeoDocs files everything
+				// under the lowercase name (as the GeoDocs add-in does).
+				if (typeof session.database === 'string') session.database = session.database.toLowerCase();
 
 				if (eulaAcceptedFlag) {
 					let calls = [];

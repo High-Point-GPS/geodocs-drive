@@ -137,7 +137,7 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
       const sessionInfo = { database, sessionId: session.sessionId, userName: session.userName, server };
       const messageBody = { session: sessionInfo, filePath, fileName };
 
-      const response = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/openDocFile', {
+      const response = await fetch('https://portal.highpointgps.com/api/geodocs/openDocFile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(messageBody)
@@ -243,7 +243,7 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
         }
       };
 
-      const response = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/emailFile', {
+      const response = await fetch('https://portal.highpointgps.com/api/geodocs/emailFile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(messageBody)

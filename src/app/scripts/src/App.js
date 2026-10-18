@@ -126,7 +126,7 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 
 		try {
 
-			const configResponse = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/getDatabaseConfig',
+			const configResponse = await fetch('https://portal.highpointgps.com/api/geodocs/getDatabaseConfig',
 			{
 				method: 'POST',
 				headers: {
@@ -141,7 +141,7 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 	
 			const driverCanSendEmail = Boolean(config?.driverCanSendEmail);
 
-			const response = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/fetchDriveFiles',
+			const response = await fetch('https://portal.highpointgps.com/api/geodocs/fetchDriveFiles',
 			{
 				method: 'POST',
 				headers: {

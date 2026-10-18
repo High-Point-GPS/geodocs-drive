@@ -83,7 +83,7 @@ const EmailButton = ({ filePath, fileName, database, session, server, driver, ve
         server
       };
 
-      const fileResponse = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/openDocFile', {
+      const fileResponse = await fetch('https://portal.highpointgps.com/api/geodocs/openDocFile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
@@ -129,7 +129,7 @@ const EmailButton = ({ filePath, fileName, database, session, server, driver, ve
         }
       };
 
-      const response = await fetch('https://us-central1-geotabfiles.cloudfunctions.net/emailFile', {
+      const response = await fetch('https://portal.highpointgps.com/api/geodocs/emailFile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(messageBody)

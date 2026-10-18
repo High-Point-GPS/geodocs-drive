@@ -18,7 +18,7 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
       const messageBody = { session: sessionInfo, filePath, fileName };
 
       const response = await fetch(
-        'https://us-central1-geotabfiles.cloudfunctions.net/readDocFile',
+        'https://portal.highpointgps.com/api/geodocs/readDocFile',
         {
           method: 'POST',
           headers: {

@@ -41,7 +41,7 @@ import {
 	postJsonWithProgress,
 } from '../utils/upload';
 
-const UPLOAD_URL = 'https://us-central1-geotabfiles.cloudfunctions.net/uploadDriveFile';
+const UPLOAD_URL = 'https://portal.highpointgps.com/api/geodocs/uploadDriveFile';
 
 // One palette for the sheet. The asset colors are the ones the rest of the Drive
 // app already uses for vehicle / driver / trailer.

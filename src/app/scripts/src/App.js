@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import DocumentTable from './components/DocumentTable';
 import DocumentMobile from './components/DocumentMobile';
 
-import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Grid, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Grid, IconButton, Tooltip, useMediaQuery } from '@mui/material';
 
 import DownloadButton from './components/DownloadButton';
 import ViewButton from './components/ViewButton';
@@ -17,7 +17,44 @@ import RvHookupIcon from '@mui/icons-material/RvHookup';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddAPhotoOutlinedIcon from '@mui/icons-material/AddAPhotoOutlined';
 
-import { isCompanyGroupLabel } from './utils/formatter';
+import { collapseCompanyGroup, isCompanyGroupLabel } from './utils/formatter';
+
+// One line of the phone's "who am I" card: a small colored icon, a label, a value.
+const ContextItem = ({ icon, tone, label, value, wide }) => (
+	<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, gridColumn: wide ? '1 / -1' : 'auto' }}>
+		<Box
+			sx={{
+				width: 34,
+				height: 34,
+				flexShrink: 0,
+				borderRadius: '10px',
+				bgcolor: tone.bg,
+				color: tone.fg,
+				display: 'grid',
+				placeItems: 'center',
+				'& svg': { fontSize: 20 },
+			}}
+		>
+			{icon}
+		</Box>
+		<Box sx={{ minWidth: 0 }}>
+			<Typography sx={{ fontSize: '12px', color: '#64748b', lineHeight: 1.2 }}>{label}</Typography>
+			<Typography
+				sx={{
+					fontSize: '14.5px',
+					fontWeight: 600,
+					color: value ? '#0f172a' : '#94a3b8',
+					lineHeight: 1.3,
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap',
+				}}
+			>
+				{value || 'None'}
+			</Typography>
+		</Box>
+	</Box>
+);
 
 
 const App = ({ api, database, session, server, groups, driver, device, trailer }) => {
@@ -35,6 +72,9 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 	// fetchFiles and thrown away, but the upload button needs it too.
 	const [config, setConfig] = useState({});
 	const [uploadOpen, setUploadOpen] = useState(false);
+	// A phone gets a compact header: four stacked cards and a 34px title used to push
+	// the documents a full screen down.
+	const phone = useMediaQuery('(max-width:600px)');
 
 	const handleError = (error) => {
 		setErrorText(error);
@@ -265,7 +305,81 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 	}
 
 	return (
-		<Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#f6f8fa', minHeight: '100vh', fontFamily: 'Inter, Roboto, sans-serif' }}>
+		<Box sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: '#f6f8fa', minHeight: '100vh', fontFamily: 'Inter, Roboto, sans-serif' }}>
+			{phone ? (
+				<>
+					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.5, px: 0.5 }}>
+						<Box sx={{ minWidth: 0 }}>
+							<Typography component="h1" sx={{ fontWeight: 800, fontSize: '22px', color: '#0f172a', lineHeight: 1.2 }}>
+								GeoDocs
+							</Typography>
+							<Typography sx={{ fontSize: '13px', color: '#64748b' }}>
+								{loading ? 'Loading your documents…' : `${files.length} document${files.length === 1 ? '' : 's'}`}
+							</Typography>
+						</Box>
+						<IconButton
+							onClick={() => fetchFiles({ refresh: true })}
+							disabled={loading || refreshing}
+							aria-label="Refresh documents"
+							sx={{ width: 44, height: 44, bgcolor: '#fff', border: '1px solid #e2e8f0', flexShrink: 0 }}
+						>
+							{refreshing ? <CircularProgress size={20} /> : <RefreshIcon />}
+						</IconButton>
+					</Box>
+
+					<Box
+						sx={{
+							display: 'grid',
+							gridTemplateColumns: '1fr 1fr',
+							gap: 1.5,
+							p: 1.75,
+							bgcolor: '#fff',
+							border: '1px solid #e2e8f0',
+							borderRadius: '16px',
+							boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
+						}}
+					>
+						<ContextItem
+							icon={<AirlineSeatReclineNormalIcon />}
+							tone={{ bg: '#e3f2fd', fg: '#1565c0' }}
+							label="Driver"
+							value={driver ? `${driver.firstName} ${driver.lastName}` : ''}
+						/>
+						<ContextItem
+							icon={<LocalShippingIcon />}
+							tone={{ bg: '#fff7e0', fg: '#f59e0b' }}
+							label="Vehicle"
+							value={device ? device.name : ''}
+						/>
+						<ContextItem
+							icon={<RvHookupIcon />}
+							tone={{ bg: '#f3e5f5', fg: '#6a1b9a' }}
+							label={trailer.length > 1 ? 'Trailers' : 'Trailer'}
+							value={trailer.map((t) => t.name).join(', ')}
+						/>
+						<ContextItem
+							icon={<GroupsIcon />}
+							tone={{ bg: '#e6f6e9', fg: '#2e7d32' }}
+							label="Groups"
+							value={collapseCompanyGroup(groups).join(', ')}
+						/>
+					</Box>
+
+					{config.driverCanUpload === true && (
+						<Button
+							onClick={() => setUploadOpen(true)}
+							startIcon={<AddAPhotoOutlinedIcon />}
+							variant="contained"
+							disableElevation
+							fullWidth
+							sx={{ mt: 1.5, textTransform: 'none', fontWeight: 700, fontSize: '16px', borderRadius: '12px', py: 1.25 }}
+						>
+							Add document
+						</Button>
+					)}
+				</>
+			) : (
+			<>
 			<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1 }}>
 				<Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 0 }}>
 	                GeoDocs Portal
@@ -329,6 +443,8 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
                 <InfoCard icon={<LocalShippingIcon />} title="Vehicle" subheader={`${device ? device.name : 'No Device Selected'}`} color={{ bg: '#fffde7', icon: '#f9a825' }} />
                 <InfoCard icon={<RvHookupIcon />} title="Trailer(s)" subheader={trailer.map(t => t.name).join(', ')} color={{ bg: '#f3e5f5', icon: '#6a1b9a' }} />
             </Grid>
+			</>
+			)}
 	
 			{
 				loading ? (
@@ -346,9 +462,10 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 				open={uploadOpen}
 				onClose={() => setUploadOpen(false)}
 				onUploaded={() => {
-					setUploadOpen(false);
-					// Re-fetch rather than splicing the new row in: the list the driver sees
-					// is built from a tag query, and this keeps one source of truth for it.
+					// The sheet stays open on its confirmation (with "Add another"); the list
+					// refreshes underneath. Re-fetched rather than splicing the new row in:
+					// the list the driver sees is built from a tag query, and this keeps one
+					// source of truth for it.
 					fetchFiles({ refresh: true });
 				}}
 				database={database}

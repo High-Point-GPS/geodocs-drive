@@ -1,85 +1,264 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+	Alert,
 	Autocomplete,
 	Box,
 	Button,
+	ButtonBase,
 	Checkbox,
+	Chip,
 	CircularProgress,
 	Dialog,
-	DialogActions,
 	DialogContent,
-	DialogTitle,
-	FormControlLabel,
 	IconButton,
+	LinearProgress,
 	MenuItem,
 	TextField,
 	Typography,
+	useMediaQuery,
 } from '@mui/material';
 
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
-import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
+import CheckIcon from '@mui/icons-material/Check';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import AirlineSeatReclineNormalIcon from '@mui/icons-material/AirlineSeatReclineNormal';
 import RvHookupIcon from '@mui/icons-material/RvHookup';
 
-// Photos and PDFs only — narrower than the web app, and matched by the backend's
-// isAcceptedDriveFileType. `image/*` covers whatever the phone calls the picture
-// (iOS HEIC included); the explicit extensions are there because some Android pickers
-// filter on those instead, and because listing `application/pdf` is what makes a phone
-// offer the Files browser rather than only the camera roll.
-const ACCEPTED_FILE_ACCEPT = [
-	'image/*',
-	'application/pdf',
-	'.pdf',
-	'.jpg', '.jpeg', '.jpe', '.jfif', '.png', '.gif', '.webp',
-	'.heic', '.heif', '.hif', '.avif', '.bmp', '.tif', '.tiff',
-].join(',');
+import {
+	ACCEPTED_FILE_ACCEPT,
+	MAX_UPLOAD_BYTES,
+	MAX_UPLOAD_LABEL,
+	fileToBase64,
+	formatBytes,
+	isAcceptedFile,
+	isPdfFile,
+	optimizeImage,
+	postJsonWithProgress,
+} from '../utils/upload';
 
-// Same rule as the backend, so a wrong file is refused here rather than after a slow
-// upload. SVG is excluded there (it is scriptable markup) so it is excluded here too.
-const ACCEPTED_IMAGE_EXTENSIONS = [
-	'jpg', 'jpeg', 'jpe', 'jfif', 'pjpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'heics',
-	'heifs', 'hif', 'avif', 'bmp', 'dib', 'tif', 'tiff', 'jp2', 'j2k', 'jpf', 'jpx',
-];
+const UPLOAD_URL = 'https://us-central1-geotabfiles.cloudfunctions.net/uploadDriveFile';
 
-const isAcceptedFile = (file) => {
-	const ext = String(file.name).split('.').pop().toLowerCase();
-	const isPdf = ext === 'pdf';
-	if (!isPdf && !ACCEPTED_IMAGE_EXTENSIONS.includes(ext)) return false;
-
-	// A phone often reports no MIME (or a generic one) for HEIC; the extension decides.
-	const mime = String(file.type || '').toLowerCase().split(';')[0].trim();
-	if (!mime || mime === 'application/octet-stream') return true;
-	if (mime === 'application/pdf') return isPdf;
-	if (mime.startsWith('image/') && mime !== 'image/svg+xml') return !isPdf;
-	return false;
+// One palette for the sheet. The asset colors are the ones the rest of the Drive
+// app already uses for vehicle / driver / trailer.
+const C = {
+	ink: '#0f172a',
+	muted: '#64748b',
+	faint: '#94a3b8',
+	line: '#e2e8f0',
+	surface: '#f8fafc',
+	primary: '#1976d2',
+	primarySoft: '#eaf2fc',
+	danger: '#b91c1c',
+	success: '#15803d',
+	vehicle: { fg: '#f59e0b', bg: '#fff7e0' },
+	driver: { fg: '#1565c0', bg: '#e3f2fd' },
+	trailer: { fg: '#6a1b9a', bg: '#f3e5f5' },
 };
 
-// Matches the backend's MAX_UPLOAD_BYTES, so an oversized file is refused on the phone
-// instead of after a slow base64 upload over a cellular connection.
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+// More than this many document types and chips stop being quicker than a menu.
+const MAX_TYPE_CHIPS = 8;
+// The backend's MAX_DOCUMENT_TYPE_LENGTH.
+const MAX_TYPE_LENGTH = 60;
+// Sentinel for the "type your own" choice, kept out of any real type name.
+const OTHER = '__geodocs_other__';
 
-const fileToBase64 = (file) =>
-	new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onerror = () => reject(new Error('Could not read that file.'));
-		reader.onload = () => resolve(String(reader.result).split(',')[1]);
-		reader.readAsDataURL(file);
-	});
-
-const formatBytes = (bytes) => {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+// Drive's page styles every `input` at 3rem / 1.5rem with !important (see app.css) and
+// stretches buttons full width, which wrecks MUI fields inside the sheet. Undone here,
+// scoped to the dialog. 16px is also the size below which iOS zooms on focus.
+const driveCssReset = {
+	'& input, & textarea': {
+		height: 'auto !important',
+		fontSize: '16px !important',
+	},
+	'& input[type="checkbox"]': { height: '100% !important' },
+	'& .MuiButton-root, & .MuiButtonBase-root': { width: 'auto' },
 };
+
+const SectionLabel = ({ children, hint, error }) => (
+	<Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1, gap: 1 }}>
+		<Typography component="h3" sx={{ fontWeight: 700, fontSize: 15, color: C.ink }}>
+			{children}
+		</Typography>
+		{hint && (
+			<Typography sx={{ fontSize: 12.5, color: error ? C.danger : C.faint, fontWeight: error ? 600 : 400 }}>
+				{hint}
+			</Typography>
+		)}
+	</Box>
+);
+
+// A large tap target for starting the upload: the camera or the file picker.
+const PickTile = ({ icon, title, subtitle, onClick, disabled }) => (
+	<ButtonBase
+		onClick={onClick}
+		disabled={disabled}
+		focusRipple
+		sx={{
+			flex: '1 1 0',
+			minWidth: 0,
+			width: 'auto',
+			display: 'flex',
+			flexDirection: 'column',
+			alignItems: 'center',
+			gap: 1,
+			py: 2.5,
+			px: 1.5,
+			borderRadius: '16px',
+			border: `1.5px dashed ${C.line}`,
+			bgcolor: C.surface,
+			transition: 'border-color 120ms, background-color 120ms',
+			'&:hover': { borderColor: C.primary, bgcolor: C.primarySoft },
+			'&.Mui-focusVisible': { borderColor: C.primary, bgcolor: C.primarySoft },
+		}}
+	>
+		<Box
+			sx={{
+				width: 52,
+				height: 52,
+				borderRadius: '50%',
+				bgcolor: C.primarySoft,
+				color: C.primary,
+				display: 'grid',
+				placeItems: 'center',
+			}}
+		>
+			{icon}
+		</Box>
+		<Typography sx={{ fontWeight: 700, fontSize: 15.5, color: C.ink, lineHeight: 1.2 }}>{title}</Typography>
+		<Typography sx={{ fontSize: 12.5, color: C.muted, lineHeight: 1.2 }}>{subtitle}</Typography>
+	</ButtonBase>
+);
+
+// What was picked: a thumbnail (or a PDF badge), its name and size, and a way to swap it.
+const FilePreview = ({ file, previewUrl, originalSize, optimizing, onReplace, onRemove, disabled }) => (
+	<Box
+		sx={{
+			display: 'flex',
+			alignItems: 'center',
+			gap: 1.5,
+			p: 1.25,
+			borderRadius: '16px',
+			border: `1px solid ${C.line}`,
+			bgcolor: '#fff',
+			boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
+		}}
+	>
+		<Box
+			sx={{
+				width: 64,
+				height: 64,
+				flexShrink: 0,
+				borderRadius: '12px',
+				overflow: 'hidden',
+				bgcolor: previewUrl ? C.surface : '#fdecea',
+				color: '#c62828',
+				display: 'grid',
+				placeItems: 'center',
+			}}
+		>
+			{previewUrl ? (
+				<img src={previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+			) : (
+				<PictureAsPdfOutlinedIcon sx={{ fontSize: 32 }} />
+			)}
+		</Box>
+		<Box sx={{ minWidth: 0, flex: 1 }}>
+			<Typography
+				sx={{ fontWeight: 600, fontSize: 15, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+			>
+				{file.name}
+			</Typography>
+			<Typography sx={{ fontSize: 12.5, color: C.muted }}>
+				{optimizing
+					? 'Preparing…'
+					: originalSize
+						? `${formatBytes(file.size)} · optimized from ${formatBytes(originalSize)}`
+						: formatBytes(file.size)}
+			</Typography>
+			<Button
+				size="small"
+				onClick={onReplace}
+				disabled={disabled}
+				sx={{ textTransform: 'none', fontWeight: 600, px: 0, minWidth: 0, mt: 0.25 }}
+			>
+				Replace
+			</Button>
+		</Box>
+		<IconButton aria-label="Remove file" onClick={onRemove} disabled={disabled} sx={{ alignSelf: 'flex-start' }}>
+			<CloseIcon fontSize="small" />
+		</IconButton>
+	</Box>
+);
+
+// One thing the document can be attached to, as a whole-row tap target.
+const AttachRow = ({ icon, tone, label, name, checked, onChange, disabled }) => (
+	<Box
+		component="label"
+		sx={{
+			display: 'flex',
+			alignItems: 'center',
+			gap: 1.5,
+			px: 1.5,
+			py: 1,
+			borderRadius: '14px',
+			border: `1px solid ${checked ? '#bcd6f5' : C.line}`,
+			bgcolor: checked ? C.primarySoft : '#fff',
+			cursor: disabled ? 'default' : 'pointer',
+			opacity: disabled && !checked ? 0.6 : 1,
+			transition: 'background-color 120ms, border-color 120ms',
+		}}
+	>
+		<Box
+			sx={{
+				width: 40,
+				height: 40,
+				flexShrink: 0,
+				borderRadius: '12px',
+				bgcolor: tone.bg,
+				color: tone.fg,
+				display: 'grid',
+				placeItems: 'center',
+			}}
+		>
+			{icon}
+		</Box>
+		<Box sx={{ minWidth: 0, flex: 1 }}>
+			<Typography sx={{ fontSize: 12.5, color: C.muted, lineHeight: 1.3 }}>{label}</Typography>
+			<Typography
+				sx={{
+					fontWeight: 600,
+					fontSize: 15,
+					color: disabled && !checked ? C.faint : C.ink,
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap',
+				}}
+			>
+				{name}
+			</Typography>
+		</Box>
+		<Checkbox
+			checked={checked}
+			onChange={(e) => onChange(e.target.checked)}
+			disabled={disabled}
+			inputProps={{ 'aria-label': `Attach to ${label.toLowerCase()} ${name}` }}
+			sx={{ m: -0.5 }}
+		/>
+	</Box>
+);
 
 /**
- * Driver-side upload. The vehicle, driver and trailers come from the Drive app's own
- * context and are pre-ticked — that is the right answer nearly every time — but each can
- * be unticked, because a driver's own paperwork is not the truck's. The server re-checks
- * whatever is submitted against the assets this session can actually see.
+ * Driver-side upload, laid out as a phone sheet: pick or shoot the document, say what
+ * it is, and confirm what it belongs to. The vehicle, driver and trailers come from
+ * the Drive app's own context and are pre-ticked — that is the right answer nearly
+ * every time — but each can be unticked, because a driver's own paperwork is not the
+ * truck's. The server re-checks whatever is submitted against the assets this session
+ * can actually see.
  */
 const UploadDialog = ({
 	open,
@@ -94,15 +273,32 @@ const UploadDialog = ({
 	device,
 	trailer = [],
 }) => {
+	// The sheet fills a phone screen: no floating card to mis-tap outside of, and the
+	// action button stays pinned in thumb reach.
+	const fullScreen = useMediaQuery('(max-width:600px)');
+
 	const [file, setFile] = useState(null);
+	const [originalSize, setOriginalSize] = useState(null);
+	const [optimizing, setOptimizing] = useState(false);
+	const [previewUrl, setPreviewUrl] = useState('');
 	const [documentType, setDocumentType] = useState('');
+	// "Other": the driver types the type. Kept apart from documentType so tapping back
+	// to a list chip does not lose what was typed.
+	const [customMode, setCustomMode] = useState(false);
+	const [customType, setCustomType] = useState('');
+	const customInputRef = useRef(null);
 	const [description, setDescription] = useState('');
 	// Optional, and a native date input on purpose: it opens the phone's own date wheel,
 	// costs no bundle (the Drive app has no date-picker dependency), and takes the
 	// YYYY-MM-DD the backend already parses.
 	const [expiryDate, setExpiryDate] = useState('');
-	const [uploading, setUploading] = useState(false);
+	// null when idle; 0..1 while sending.
+	const [progress, setProgress] = useState(null);
 	const [error, setError] = useState('');
+	// What was just added, for the confirmation screen.
+	const [done, setDone] = useState(null);
+
+	const uploading = progress !== null;
 
 	// The Drive app's trailer list has come back both as Trailer objects and as
 	// single-element arrays of them depending on the multiCall shape; flatten either.
@@ -129,6 +325,18 @@ const UploadDialog = ({
 	const activeVehicle = device || pickedVehicle;
 	const mustPickVehicle = !device;
 	const vehicleAttached = device ? attachVehicle : !!pickedVehicle;
+
+	const fileInputRef = useRef(null);
+	const cameraInputRef = useRef(null);
+	// Which picker produced the current file, so "Replace" reopens the same one.
+	const lastPickerRef = useRef('file');
+	// One attempt per time the dialog is opened. Without this, a lookup that comes back
+	// empty or fails leaves the effect's guard conditions exactly as they started, and
+	// the state change from finishing re-runs it — an unbounded retry loop against
+	// Geotab for precisely the drivers whose list is empty or erroring.
+	const vehiclesRequestedRef = useRef(false);
+	// Guards against a slow optimize finishing after the driver already picked again.
+	const pickSeqRef = useRef(0);
 
 	// Only fetched when there is no trip vehicle and the dialog is actually open, so the
 	// common case costs nothing.
@@ -163,22 +371,51 @@ const UploadDialog = ({
 		);
 	}, [open, device, api]);
 
-	const fileInputRef = useRef(null);
-	const cameraInputRef = useRef(null);
-	// One attempt per time the dialog is opened. Without this, a lookup that comes back
-	// empty or fails leaves the effect's guard conditions exactly as they started, and
-	// the state change from finishing re-runs it — an unbounded retry loop against
-	// Geotab for precisely the drivers whose list is empty or erroring.
-	const vehiclesRequestedRef = useRef(false);
+	// Thumbnail for a picked photo. An object URL, released when the file changes.
+	useEffect(() => {
+		if (!file || isPdfFile(file)) {
+			setPreviewUrl('');
+			return undefined;
+		}
+		const url = URL.createObjectURL(file);
+		setPreviewUrl(url);
+		return () => URL.revokeObjectURL(url);
+	}, [file]);
 
 	const typeRequired = documentTypes.length > 0;
+	const useTypeChips = documentTypes.length > 0 && documentTypes.length <= MAX_TYPE_CHIPS;
+	const typedOwn = customMode || documentTypes.length === 0;
+	const effectiveType = typedOwn ? customType.trim() : documentType;
+	// Typing a name that is already on the list is that list entry — the server stores
+	// it in the list's casing — so say so rather than look like a new type.
+	const matchedListType =
+		typedOwn && effectiveType
+			? documentTypes.find((t) => t.trim().toLowerCase() === effectiveType.toLowerCase()) || null
+			: null;
+
+	const chooseType = (type) => {
+		setCustomMode(false);
+		setDocumentType(type);
+	};
+	const chooseOther = () => {
+		setCustomMode(true);
+		setDocumentType('');
+		// After the field mounts.
+		setTimeout(() => customInputRef.current && customInputRef.current.focus(), 0);
+	};
 
 	const reset = () => {
+		pickSeqRef.current += 1;
 		setFile(null);
+		setOriginalSize(null);
+		setOptimizing(false);
 		setDocumentType('');
+		setCustomMode(false);
+		setCustomType('');
 		setDescription('');
 		setExpiryDate('');
 		setError('');
+		setProgress(null);
 		setAttachVehicle(true);
 		setAttachDriver(true);
 		setAttachTrailers(true);
@@ -188,24 +425,48 @@ const UploadDialog = ({
 	const handleClose = () => {
 		if (uploading) return;
 		reset();
+		setDone(null);
 		onClose();
 	};
 
-	const handlePick = (event) => {
+	// A tap outside a desktop dialog should not throw away a photo the driver just took.
+	const handleDialogClose = (event, reason) => {
+		if (reason === 'backdropClick' && file && !done) return;
+		handleClose();
+	};
+
+	const openPicker = (which) => {
+		lastPickerRef.current = which;
+		const input = which === 'camera' ? cameraInputRef.current : fileInputRef.current;
+		if (input) input.click();
+	};
+
+	const handlePick = async (event) => {
 		const picked = event.target.files && event.target.files[0];
 		// Clear the input's value so picking the same file twice still fires onChange.
 		event.target.value = '';
 		if (!picked) return;
 		if (!isAcceptedFile(picked)) {
-			setError('You can upload photos and PDF files only.');
-			return;
-		}
-		if (picked.size > MAX_UPLOAD_BYTES) {
-			setError(`That file is ${formatBytes(picked.size)}. The limit is 25 MB.`);
+			setError('You can add photos and PDF files only.');
 			return;
 		}
 		setError('');
+
+		const seq = ++pickSeqRef.current;
 		setFile(picked);
+		setOriginalSize(null);
+		setOptimizing(true);
+		const result = await optimizeImage(picked);
+		if (seq !== pickSeqRef.current) return;
+		setOptimizing(false);
+
+		if (result.file.size > MAX_UPLOAD_BYTES) {
+			setFile(null);
+			setError(`That file is ${formatBytes(result.file.size)}. The limit is ${MAX_UPLOAD_LABEL}.`);
+			return;
+		}
+		setFile(result.file);
+		setOriginalSize(result.originalSize || null);
 	};
 
 	const attachedCount =
@@ -213,11 +474,20 @@ const UploadDialog = ({
 		(attachDriver && driver ? 1 : 0) +
 		(attachTrailers ? trailers.length : 0);
 
-	const canUpload = !!file && attachedCount > 0 && (!typeRequired || !!documentType) && !uploading;
+	// What still stands between the driver and Upload, in the order they would fix it.
+	const missing = !file
+		? 'Add a photo or file to continue'
+		: typeRequired && !effectiveType
+			? 'Choose what this document is'
+			: attachedCount === 0
+				? 'Attach it to at least one thing'
+				: '';
+
+	const canUpload = !missing && !uploading && !optimizing;
 
 	const handleUpload = async () => {
 		if (!canUpload) return;
-		setUploading(true);
+		setProgress(0);
 		setError('');
 
 		try {
@@ -239,352 +509,496 @@ const UploadDialog = ({
 
 			const base64 = await fileToBase64(file);
 
-			const response = await fetch(
-				'https://us-central1-geotabfiles.cloudfunctions.net/uploadDriveFile',
+			const data = await postJsonWithProgress(
+				UPLOAD_URL,
 				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-					body: JSON.stringify({
-						session: {
-							database,
-							sessionId: session.sessionId,
-							userName: session.userName,
-							server,
-						},
-						fileName: file.name,
-						fileData: base64,
-						contentType: file.type,
-						owners,
-						ownerNames,
-						tags,
-						documentType: documentType || undefined,
-						description: description || undefined,
-						expiryDate: expiryDate || undefined,
-						driverName: driver ? `${driver.firstName} ${driver.lastName}` : undefined,
-					}),
-				}
+					session: {
+						database,
+						sessionId: session.sessionId,
+						userName: session.userName,
+						server,
+					},
+					fileName: file.name,
+					fileData: base64,
+					contentType: file.type,
+					owners,
+					ownerNames,
+					tags,
+					documentType: effectiveType || undefined,
+					description: description.trim() || undefined,
+					expiryDate: expiryDate || undefined,
+					driverName: driver ? `${driver.firstName} ${driver.lastName}` : undefined,
+				},
+				(fraction) => setProgress(fraction)
 			);
 
-			const data = await response.json().catch(() => ({}));
-
-			if (!response.ok) {
-				throw new Error(data.error || data.message || 'Upload failed. Please try again.');
-			}
-
+			setDone({
+				fileName: data.fileName || file.name,
+				documentType: matchedListType || effectiveType,
+				attachedTo: [...ownerNames.vehicles, ...ownerNames.drivers, ...ownerNames.trailers],
+			});
 			reset();
 			onUploaded(data);
 		} catch (err) {
 			console.error('Driver upload failed:', err);
 			setError(err.message || 'Upload failed. Please try again.');
-		} finally {
-			setUploading(false);
+			setProgress(null);
 		}
 	};
 
-	const attachRow = (icon, label, name, checked, onChange, disabled) => (
-		<FormControlLabel
-			sx={{ ml: 0, width: '100%' }}
-			disabled={disabled}
-			control={<Checkbox checked={checked} onChange={(e) => onChange(e.target.checked)} />}
-			label={
-				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-					{icon}
-					<Box sx={{ minWidth: 0 }}>
-						<Typography sx={{ fontSize: 13, color: '#64748b', lineHeight: 1.2 }}>{label}</Typography>
-						<Typography
-							sx={{
-								fontWeight: 600,
-								color: disabled ? '#94a3b8' : '#1f2937',
-								overflow: 'hidden',
-								textOverflow: 'ellipsis',
-								whiteSpace: 'nowrap',
-							}}
-						>
-							{name}
-						</Typography>
-					</Box>
-				</Box>
-			}
-		/>
+	const addAnother = () => {
+		setDone(null);
+		reset();
+	};
+
+	const header = (
+		<Box
+			sx={{
+				position: 'relative',
+				px: 7,
+				pt: fullScreen ? 'calc(env(safe-area-inset-top, 0px) + 14px)' : 2.25,
+				pb: 1.5,
+				textAlign: 'center',
+				borderBottom: `1px solid ${C.line}`,
+			}}
+		>
+			<Typography id="upload-dialog-title" component="h2" sx={{ fontWeight: 700, fontSize: 18, color: C.ink }}>
+				{done ? 'Document added' : 'Add a document'}
+			</Typography>
+			<IconButton
+				aria-label="Close"
+				onClick={handleClose}
+				disabled={uploading}
+				sx={{ position: 'absolute', right: 8, bottom: 6, width: 'auto' }}
+			>
+				<CloseIcon />
+			</IconButton>
+		</Box>
 	);
 
-	return (
-		<Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" scroll="paper">
-			{/* The close button is taken out of the flow (absolute) so the heading is
-			    centred on the dialog itself rather than on the space left beside it. */}
-			<DialogTitle component="div" sx={{ position: 'relative', pb: 1, px: 6 }}>
-				<Typography component="h2" sx={{ fontWeight: 700, fontSize: 20, textAlign: 'center' }}>
-					Add a document
+	const successView = done && (
+		<DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', py: 5, px: 3 }}>
+			<CheckCircleRoundedIcon sx={{ fontSize: 72, color: C.success, mb: 1.5 }} />
+			<Typography sx={{ fontWeight: 700, fontSize: 20, color: C.ink }}>Saved to GeoDocs</Typography>
+			<Typography sx={{ fontSize: 15, color: C.muted, mt: 0.75, maxWidth: 320, wordBreak: 'break-word' }}>
+				{done.documentType ? `${done.documentType} · ` : ''}
+				{done.fileName}
+			</Typography>
+			{done.attachedTo.length > 0 && (
+				<Typography sx={{ fontSize: 13.5, color: C.muted, mt: 0.5 }}>
+					Attached to {done.attachedTo.join(', ')}
 				</Typography>
-				<IconButton
-					aria-label="close"
-					onClick={handleClose}
-					disabled={uploading}
-					sx={{ position: 'absolute', top: 8, right: 8 }}
+			)}
+			<Box sx={{ display: 'flex', gap: 1.5, mt: 4, width: '100%', maxWidth: 360 }}>
+				<Button
+					variant="outlined"
+					onClick={addAnother}
+					sx={{ flex: 1, width: 'auto', textTransform: 'none', fontWeight: 700, borderRadius: '12px', py: 1.25 }}
 				>
-					<CloseIcon />
-				</IconButton>
-			</DialogTitle>
-
-			<DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-				{/* Picking the file is the first thing a driver does, so it sits at the top,
-				    centred. Two explicit buttons rather than one file field: on a phone
-				    "Take photo" should open the camera directly, which is what `capture` does. */}
-				<Box
-					sx={{
-						display: 'flex',
-						flexWrap: 'wrap',
-						gap: 1,
-						justifyContent: 'center',
-						alignItems: 'center',
-					}}
-				>
-					<Button
-						variant="outlined"
-						startIcon={<PhotoCameraOutlinedIcon />}
-						onClick={() => cameraInputRef.current && cameraInputRef.current.click()}
-						disabled={uploading}
-						sx={{
-							textTransform: 'none',
-							fontWeight: 600,
-							py: 1.25,
-							px: 2.5,
-							borderRadius: '10px',
-							// Drive's own CSS stretches buttons full width, so the width is
-							// driven here. The pair shares one row and stays centred: a fixed
-							// min-width overflowed a narrow phone's content box by a few
-							// pixels and wrapped them onto separate lines.
-							width: 'auto',
-							minWidth: 0,
-							maxWidth: 176,
-							flex: '1 1 0',
-						}}
-					>
-						Take photo
-					</Button>
-					<Button
-						variant="outlined"
-						startIcon={<AttachFileOutlinedIcon />}
-						onClick={() => fileInputRef.current && fileInputRef.current.click()}
-						disabled={uploading}
-						sx={{
-							textTransform: 'none',
-							fontWeight: 600,
-							py: 1.25,
-							px: 2.5,
-							borderRadius: '10px',
-							width: 'auto',
-							minWidth: 0,
-							maxWidth: 176,
-							flex: '1 1 0',
-						}}
-					>
-						Choose file
-					</Button>
-				</Box>
-				<input
-					ref={cameraInputRef}
-					type="file"
-					accept="image/*"
-					capture="environment"
-					onChange={handlePick}
-					style={{ display: 'none' }}
-				/>
-				<input
-					ref={fileInputRef}
-					type="file"
-					accept={ACCEPTED_FILE_ACCEPT}
-					onChange={handlePick}
-					style={{ display: 'none' }}
-				/>
-
-				{file ? (
-					<Box
-						sx={{
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'space-between',
-							gap: 1,
-							border: '1px solid #bfdbfe',
-							bgcolor: '#eff6ff',
-							borderRadius: '10px',
-							px: 1.5,
-							py: 1,
-						}}
-					>
-						<Box sx={{ minWidth: 0 }}>
-							<Typography
-								sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-							>
-								{file.name}
-							</Typography>
-							<Typography sx={{ fontSize: 12, color: '#64748b' }}>{formatBytes(file.size)}</Typography>
-						</Box>
-						<Button
-							size="small"
-							onClick={() => setFile(null)}
-							disabled={uploading}
-							sx={{ textTransform: 'none', fontWeight: 600, flexShrink: 0 }}
-						>
-							Remove
-						</Button>
-					</Box>
-				) : (
-					<Typography sx={{ fontSize: 13, color: '#64748b', textAlign: 'center' }}>
-						Photos and PDF files, up to 25 MB.
-					</Typography>
-				)}
-
-				{documentTypes.length > 0 && (
-					<TextField
-						select
-						label="What is this?"
-						value={documentType}
-						onChange={(e) => setDocumentType(e.target.value)}
-						fullWidth
-						disabled={uploading}
-						helperText={typeRequired && !documentType ? 'Required' : ' '}
-						error={typeRequired && !documentType && !!error}
-					>
-						{documentTypes.map((type) => (
-							<MenuItem key={type} value={type}>
-								{type}
-							</MenuItem>
-						))}
-					</TextField>
-				)}
-
-				<TextField
-					label="Expires on (optional)"
-					type="date"
-					value={expiryDate}
-					onChange={(e) => setExpiryDate(e.target.value)}
-					fullWidth
-					disabled={uploading}
-					// type="date" renders its own placeholder, so the label must not sit on top of it.
-					InputLabelProps={{ shrink: true }}
-					helperText={
-						expiryDate
-							? 'Reminder emails go out before this date.'
-							: 'Set this for a permit or inspection that runs out.'
-					}
-				/>
-
-				<TextField
-					label="Notes (optional)"
-					value={description}
-					onChange={(e) => setDescription(e.target.value)}
-					fullWidth
-					multiline
-					minRows={2}
-					disabled={uploading}
-					inputProps={{ maxLength: 500 }}
-				/>
-
-				<Box>
-					<Typography sx={{ fontWeight: 700, fontSize: 14, color: '#334155', mb: 0.5 }}>
-						Attach to
-					</Typography>
-					<Box sx={{ display: 'flex', flexDirection: 'column' }}>
-						{/* On a trip the vehicle is shown, not chosen — it is whichever one the
-						    Drive app is on, so a document cannot be filed against the wrong
-						    truck by a mis-tap. The tickbox only says whether to attach it. */}
-						{!mustPickVehicle &&
-							attachRow(
-								<LocalShippingIcon sx={{ color: '#f9a825' }} />,
-								'Vehicle',
-								device.name,
-								attachVehicle,
-								setAttachVehicle,
-								uploading
-							)}
-						{/* Not on a trip: no vehicle to show, so the driver names one. */}
-						{mustPickVehicle && (
-							<Box sx={{ pb: 1.5, pt: 0.5 }}>
-								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
-									<LocalShippingIcon sx={{ color: '#f9a825' }} />
-									<Typography sx={{ fontSize: 13, color: '#64748b' }}>
-										Vehicle — you are not on a trip
-									</Typography>
-								</Box>
-								<Autocomplete
-									options={vehicleOptions}
-									value={pickedVehicle}
-									onChange={(_, v) => setPickedVehicle(v)}
-									getOptionLabel={(o) => (o && o.name) || ''}
-									isOptionEqualToValue={(o, v) => o.id === v.id}
-									loading={vehiclesLoading}
-									disabled={uploading || vehiclesFailed}
-									size="small"
-									noOptionsText={vehiclesLoading ? 'Loading…' : 'No vehicles available to you'}
-									renderInput={(params) => (
-										<TextField
-											{...params}
-											label="Which vehicle?"
-											placeholder="Search vehicles…"
-											helperText={
-												vehiclesFailed
-													? 'Could not load vehicles. Attach to yourself instead.'
-													: 'Optional — leave empty to attach this to yourself only.'
-											}
-											error={vehiclesFailed}
-											InputProps={{
-												...params.InputProps,
-												endAdornment: (
-													<>
-														{vehiclesLoading ? <CircularProgress size={16} /> : null}
-														{params.InputProps.endAdornment}
-													</>
-												),
-											}}
-										/>
-									)}
-								/>
-							</Box>
-						)}
-						{attachRow(
-							<AirlineSeatReclineNormalIcon sx={{ color: '#1565c0' }} />,
-							'Driver',
-							driver ? `${driver.firstName} ${driver.lastName}` : 'No driver selected',
-							attachDriver && !!driver,
-							setAttachDriver,
-							!driver || uploading
-						)}
-						{attachRow(
-							<RvHookupIcon sx={{ color: '#6a1b9a' }} />,
-							trailers.length === 1 ? 'Trailer' : 'Trailers',
-							trailers.length ? trailers.map((t) => t.name).join(', ') : 'No trailer attached',
-							attachTrailers && trailers.length > 0,
-							setAttachTrailers,
-							trailers.length === 0 || uploading
-						)}
-					</Box>
-					{attachedCount === 0 && (
-						<Typography sx={{ fontSize: 13, color: '#b91c1c', mt: 0.5 }}>
-							Pick at least one thing to attach this document to.
-						</Typography>
-					)}
-				</Box>
-
-				{error && (
-					<Typography sx={{ fontSize: 13.5, color: '#b91c1c', fontWeight: 600 }}>{error}</Typography>
-				)}
-			</DialogContent>
-
-			<DialogActions sx={{ px: 3, pb: 2.5, justifyContent: 'space-between' }}>
-				<Button onClick={handleClose} disabled={uploading} sx={{ textTransform: 'none', fontWeight: 600 }}>
-					Cancel
+					Add another
 				</Button>
 				<Button
 					variant="contained"
-					onClick={handleUpload}
-					disabled={!canUpload}
-					startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CloudUploadIcon />}
-					sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px', px: 3 }}
+					disableElevation
+					onClick={handleClose}
+					sx={{ flex: 1, width: 'auto', textTransform: 'none', fontWeight: 700, borderRadius: '12px', py: 1.25 }}
 				>
-					{uploading ? 'Uploading…' : 'Upload'}
+					Done
 				</Button>
-			</DialogActions>
+			</Box>
+		</DialogContent>
+	);
+
+	const formView = !done && (
+		<>
+			<DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, px: { xs: 2, sm: 3 }, py: 2.5 }}>
+				{/* 1 — the document itself. Two tiles rather than one file field: on a
+				    phone "Take photo" should open the camera directly, which is what
+				    `capture` does. */}
+				<Box component="section">
+					<SectionLabel hint={file ? null : `Photo or PDF, up to ${MAX_UPLOAD_LABEL}`}>Document</SectionLabel>
+					{file ? (
+						<FilePreview
+							file={file}
+							previewUrl={previewUrl}
+							originalSize={originalSize}
+							optimizing={optimizing}
+							onReplace={() => openPicker(lastPickerRef.current)}
+							onRemove={() => {
+								pickSeqRef.current += 1;
+								setFile(null);
+								setOriginalSize(null);
+								setOptimizing(false);
+							}}
+							disabled={uploading}
+						/>
+					) : (
+						<Box sx={{ display: 'flex', gap: 1.5 }}>
+							<PickTile
+								icon={<PhotoCameraOutlinedIcon />}
+								title="Take photo"
+								subtitle="Use the camera"
+								onClick={() => openPicker('camera')}
+								disabled={uploading}
+							/>
+							<PickTile
+								icon={<UploadFileOutlinedIcon />}
+								title="Choose file"
+								subtitle="Photo or PDF"
+								onClick={() => openPicker('file')}
+								disabled={uploading}
+							/>
+						</Box>
+					)}
+					<input
+						ref={cameraInputRef}
+						type="file"
+						accept="image/*"
+						capture="environment"
+						onChange={handlePick}
+						style={{ display: 'none' }}
+					/>
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept={ACCEPTED_FILE_ACCEPT}
+						onChange={handlePick}
+						style={{ display: 'none' }}
+					/>
+				</Box>
+
+				{/* 2 — what it is. Chips while the list is short: one tap, and every
+				    choice visible at once. "Other" lets the driver type their own — the
+				    paperwork in a cab does not always fit the office's list. */}
+				<Box component="section">
+					{/* Turns red once a file is in, when this is the next thing to do. */}
+					<SectionLabel
+						hint={typeRequired ? 'Required' : 'Optional'}
+						error={typeRequired && !!file && !effectiveType}
+					>
+						What is this?
+					</SectionLabel>
+					{useTypeChips && (
+						<Box role="radiogroup" aria-label="Document type" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+							{[...documentTypes, OTHER].map((type) => {
+								const isOther = type === OTHER;
+								const selected = isOther ? customMode : !customMode && documentType === type;
+								return (
+									<Chip
+										key={type}
+										data-doc-type={type}
+										role="radio"
+										aria-checked={selected}
+										label={isOther ? 'Other…' : type}
+										icon={selected ? <CheckIcon /> : isOther ? <EditOutlinedIcon /> : undefined}
+										onClick={() => (isOther ? chooseOther() : chooseType(selected ? '' : type))}
+										disabled={uploading}
+										color={selected ? 'primary' : 'default'}
+										variant={selected ? 'filled' : 'outlined'}
+										sx={{
+											height: 40,
+											borderRadius: '20px',
+											fontSize: 14.5,
+											fontWeight: selected ? 700 : 500,
+											px: 0.5,
+											bgcolor: selected ? undefined : '#fff',
+											borderColor: selected ? undefined : C.line,
+											borderStyle: isOther && !selected ? 'dashed' : undefined,
+										}}
+									/>
+								);
+							})}
+						</Box>
+					)}
+					{documentTypes.length > MAX_TYPE_CHIPS && (
+						<TextField
+							select
+							value={customMode ? OTHER : documentType}
+							onChange={(e) => (e.target.value === OTHER ? chooseOther() : chooseType(e.target.value))}
+							fullWidth
+							disabled={uploading}
+							error={!!file && !effectiveType}
+							SelectProps={{ displayEmpty: true }}
+						>
+							<MenuItem value="" disabled>
+								Choose a type…
+							</MenuItem>
+							{documentTypes.map((type) => (
+								<MenuItem key={type} value={type}>
+									{type}
+								</MenuItem>
+							))}
+							<MenuItem value={OTHER}>Other — type your own…</MenuItem>
+						</TextField>
+					)}
+					{/* With no list from the fleet, the type is simply typed. */}
+					{(customMode || documentTypes.length === 0) && (
+						<TextField
+							inputRef={customInputRef}
+							value={customType}
+							onChange={(e) => setCustomType(e.target.value)}
+							placeholder={documentTypes.length ? 'Type what this document is' : 'e.g. Weigh ticket, Lumper receipt'}
+							fullWidth
+							disabled={uploading}
+							error={typeRequired && !!file && !effectiveType}
+							inputProps={{ maxLength: MAX_TYPE_LENGTH, 'aria-label': 'Document type' }}
+							sx={{ mt: documentTypes.length ? 1.25 : 0 }}
+							helperText={
+								matchedListType
+									? `Saved as "${matchedListType}"`
+									: customType.length > MAX_TYPE_LENGTH - 10
+										? `${MAX_TYPE_LENGTH - customType.length} characters left`
+										: undefined
+							}
+						/>
+					)}
+				</Box>
+
+				{/* 3 — details, both optional. */}
+				<Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+					<SectionLabel hint="Optional">Details</SectionLabel>
+					<Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+						<TextField
+							label="Expires on"
+							type="date"
+							value={expiryDate}
+							onChange={(e) => setExpiryDate(e.target.value)}
+							fullWidth
+							disabled={uploading}
+							// type="date" renders its own placeholder, so the label must not sit on top of it.
+							InputLabelProps={{ shrink: true }}
+							helperText={
+								expiryDate
+									? 'Reminder emails go out before this date.'
+									: 'For a permit or inspection that runs out.'
+							}
+						/>
+						{/* iOS's date wheel has no way to empty the field again. */}
+						{expiryDate && (
+							<Button
+								onClick={() => setExpiryDate('')}
+								disabled={uploading}
+								sx={{ textTransform: 'none', fontWeight: 600, mt: 1, flexShrink: 0, width: 'auto' }}
+							>
+								Clear
+							</Button>
+						)}
+					</Box>
+					<TextField
+						label="Notes"
+						placeholder="Anything the office should know"
+						value={description}
+						onChange={(e) => setDescription(e.target.value)}
+						fullWidth
+						multiline
+						minRows={2}
+						disabled={uploading}
+						inputProps={{ maxLength: 500 }}
+						helperText={description.length > 400 ? `${500 - description.length} characters left` : undefined}
+					/>
+				</Box>
+
+				{/* 4 — what it belongs to. */}
+				<Box component="section">
+					<SectionLabel
+						hint={attachedCount === 0 ? 'Pick at least one' : null}
+						error={attachedCount === 0}
+					>
+						Attach to
+					</SectionLabel>
+					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+						{/* On a trip the vehicle is shown, not chosen — it is whichever one the
+						    Drive app is on, so a document cannot be filed against the wrong
+						    truck by a mis-tap. The tickbox only says whether to attach it. */}
+						{!mustPickVehicle && (
+							<AttachRow
+								icon={<LocalShippingIcon />}
+								tone={C.vehicle}
+								label="Vehicle"
+								name={device.name}
+								checked={attachVehicle}
+								onChange={setAttachVehicle}
+								disabled={uploading}
+							/>
+						)}
+						{/* Not on a trip: no vehicle to show, so the driver names one. */}
+						{mustPickVehicle && (
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'flex-start',
+									gap: 1.5,
+									px: 1.5,
+									py: 1.25,
+									borderRadius: '14px',
+									border: `1px solid ${pickedVehicle ? '#bcd6f5' : C.line}`,
+									bgcolor: pickedVehicle ? C.primarySoft : '#fff',
+								}}
+							>
+								<Box
+									sx={{
+										width: 40,
+										height: 40,
+										flexShrink: 0,
+										borderRadius: '12px',
+										bgcolor: C.vehicle.bg,
+										color: C.vehicle.fg,
+										display: 'grid',
+										placeItems: 'center',
+									}}
+								>
+									<LocalShippingIcon />
+								</Box>
+								<Box sx={{ flex: 1, minWidth: 0 }}>
+									<Typography sx={{ fontSize: 12.5, color: C.muted, lineHeight: 1.3, mb: 0.75 }}>
+										Vehicle — you are not on a trip
+									</Typography>
+									<Autocomplete
+										options={vehicleOptions}
+										value={pickedVehicle}
+										onChange={(_, v) => setPickedVehicle(v)}
+										getOptionLabel={(o) => (o && o.name) || ''}
+										isOptionEqualToValue={(o, v) => o.id === v.id}
+										loading={vehiclesLoading}
+										disabled={uploading || vehiclesFailed}
+										size="small"
+										noOptionsText={vehiclesLoading ? 'Loading…' : 'No vehicles available to you'}
+										renderInput={(params) => (
+											<TextField
+												{...params}
+												placeholder="Search vehicles…"
+												helperText={
+													vehiclesFailed
+														? 'Could not load vehicles. Attach it to yourself instead.'
+														: 'Optional — leave empty to attach it to yourself only.'
+												}
+												error={vehiclesFailed}
+												sx={{ bgcolor: '#fff' }}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{vehiclesLoading ? <CircularProgress size={16} /> : null}
+															{params.InputProps.endAdornment}
+														</>
+													),
+												}}
+											/>
+										)}
+									/>
+								</Box>
+							</Box>
+						)}
+						<AttachRow
+							icon={<AirlineSeatReclineNormalIcon />}
+							tone={C.driver}
+							label="Driver"
+							name={driver ? `${driver.firstName} ${driver.lastName}` : 'No driver signed in'}
+							checked={attachDriver && !!driver}
+							onChange={setAttachDriver}
+							disabled={!driver || uploading}
+						/>
+						{trailers.length > 0 && (
+							<AttachRow
+								icon={<RvHookupIcon />}
+								tone={C.trailer}
+								label={trailers.length === 1 ? 'Trailer' : 'Trailers'}
+								name={trailers.map((t) => t.name).join(', ')}
+								checked={attachTrailers}
+								onChange={setAttachTrailers}
+								disabled={uploading}
+							/>
+						)}
+					</Box>
+				</Box>
+			</DialogContent>
+
+			{/* Pinned action bar: what is missing, or how far the upload has got. */}
+			<Box
+				sx={{
+					borderTop: `1px solid ${C.line}`,
+					bgcolor: '#fff',
+					px: { xs: 2, sm: 3 },
+					pt: 1.5,
+					pb: fullScreen ? 'calc(env(safe-area-inset-bottom, 0px) + 12px)' : 2,
+				}}
+			>
+				{error && (
+					<Alert severity="error" sx={{ mb: 1.5, borderRadius: '12px', fontSize: 14 }}>
+						{error}
+					</Alert>
+				)}
+				{uploading ? (
+					<Box sx={{ mb: 1.25 }}>
+						<Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+							<Typography sx={{ fontSize: 13.5, color: C.ink, fontWeight: 600 }}>
+								{progress < 1 ? 'Uploading…' : 'Saving…'}
+							</Typography>
+							<Typography sx={{ fontSize: 13.5, color: C.muted, fontVariantNumeric: 'tabular-nums' }}>
+								{Math.round(progress * 100)}%
+							</Typography>
+						</Box>
+						<LinearProgress
+							variant={progress < 1 ? 'determinate' : 'indeterminate'}
+							value={progress * 100}
+							sx={{ height: 6, borderRadius: 3 }}
+						/>
+					</Box>
+				) : (
+					missing && (
+						<Typography sx={{ fontSize: 13.5, color: C.muted, textAlign: 'center', mb: 1.25 }}>
+							{missing}
+						</Typography>
+					)
+				)}
+				<Box sx={{ display: 'flex', gap: 1.5 }}>
+					{!fullScreen && (
+						<Button
+							onClick={handleClose}
+							disabled={uploading}
+							sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '12px', width: 'auto', px: 2.5 }}
+						>
+							Cancel
+						</Button>
+					)}
+					<Button
+						variant="contained"
+						disableElevation
+						onClick={handleUpload}
+						disabled={!canUpload}
+						sx={{
+							flex: 1,
+							width: 'auto',
+							textTransform: 'none',
+							fontWeight: 700,
+							fontSize: 16,
+							borderRadius: '12px',
+							py: 1.4,
+						}}
+					>
+						{uploading ? 'Uploading…' : optimizing ? 'Preparing…' : 'Upload document'}
+					</Button>
+				</Box>
+			</Box>
+		</>
+	);
+
+	return (
+		<Dialog
+			open={open}
+			onClose={handleDialogClose}
+			fullWidth
+			maxWidth="sm"
+			fullScreen={fullScreen}
+			scroll="paper"
+			aria-labelledby="upload-dialog-title"
+			// The dialog mounts straight under <body>, where a host page's `body > div`
+			// margin (the dev harness has one) would inset a full-screen sheet.
+			sx={{ m: 0 }}
+			PaperProps={{ sx: { borderRadius: fullScreen ? 0 : '20px', bgcolor: '#fff', ...driveCssReset } }}
+		>
+			{header}
+			{done ? successView : formView}
 		</Dialog>
 	);
 };

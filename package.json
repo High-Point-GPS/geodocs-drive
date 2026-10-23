@@ -10,7 +10,7 @@
 		"test": "start-server-and-test serve http://localhost:9000 mocha",
 		"mocha": "mocha test/**/*.js",
 		"zip": "node zip.util.js",
-		"build-dev": "webpack --mode=production --config webpack.local.js",
+		"build-dev": "webpack --mode=production --config webpack.local.js --output-path dist",
 		"postbuild-dev": "node zip.util.js"
 	},
 	"resolutions": {

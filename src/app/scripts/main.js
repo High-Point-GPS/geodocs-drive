@@ -21,6 +21,44 @@ const addinEl = (id) => {
 	return root ? root.querySelector('#' + id) : null;
 };
 
+// Shows a plain message in place of the app (no React root involved).
+const showMessage = (title, text, color) => {
+	const appEl = addinEl('hpgps-app');
+	if (appEl) appEl.className = appEl.className.replace('hidden', '').trim();
+	const container = addinEl('hpgps-scroll-content');
+	if (!container) return;
+	if (appRoot) {
+		appRoot.unmount();
+		appRoot = null;
+		appRootContainer = null;
+	}
+	container.style.display = 'block';
+	container.innerHTML = '';
+	const box = document.createElement('div');
+	box.style.cssText = `padding:2em;text-align:center;color:${color || '#b00'};`;
+	const h = document.createElement('h2');
+	h.textContent = title;
+	const p = document.createElement('p');
+	p.textContent = text;
+	box.appendChild(h);
+	box.appendChild(p);
+	container.appendChild(box);
+};
+
+// Shown inside the EULA modal when saving the acceptance fails.
+const showEulaError = (text) => {
+	const footer = addinEl('eula-accept-button');
+	if (!footer || !footer.parentNode) return;
+	let el = addinEl('eula-error');
+	if (!el) {
+		el = document.createElement('p');
+		el.id = 'eula-error';
+		el.style.cssText = 'color:#b00;margin:0 0 0.5em;width:100%;text-align:center;';
+		footer.parentNode.insertBefore(el, footer.parentNode.firstChild);
+	}
+	el.textContent = text;
+};
+
 const showModal = (shouldShow) => {
 	const backdrop = addinEl('eula-modal-backdrop');
 
@@ -31,10 +69,10 @@ const showModal = (shouldShow) => {
     return shouldShow;
 };
 
+// Resolves true when the choice is final; false when saving an acceptance failed.
 const handleButtonClick = async (buttonValue, api) => {
-    showModal(false);
-
     if (buttonValue === 'Decline') {
+		showModal(false);
 		const container = addinEl('hpgps-scroll-content');
 		if (container) container.style.display = 'none';
     } else if (buttonValue === 'Accept') {
@@ -68,11 +106,15 @@ const handleButtonClick = async (buttonValue, api) => {
             }
 
 			showModal(false);
+			return true;
 
         } catch (error) {
             console.error('Error in handleButtonClick:', error);
+			showEulaError('Could not save your acceptance. Check your connection and press Accept again.');
+			return false;
         }
     }
+    return true;
 };
 
 const isEulaAccepted = async (userName, api) => {
@@ -148,7 +190,12 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 					acceptButton.onclick = null;
 					declineButton.onclick = null;
 					acceptButton.onclick = async () => {
-						await handleButtonClick('Accept', freshApi);
+						acceptButton.disabled = true;
+						const saved = await handleButtonClick('Accept', freshApi);
+						acceptButton.disabled = false;
+						// Keep the modal up so the driver can retry; otherwise the EULA
+						// would be asked again on every visit.
+						if (!saved) return;
 						showModal(false);
 						resolve(true);
 					};
@@ -360,23 +407,18 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 							);
 						},
 						function (error) {
-							console.log(error);
+							console.error('Could not load the vehicle, driver and groups:', error);
+							showMessage(
+								'Could not load your documents',
+								'GeoDocs could not read your vehicle, driver and groups from Geotab. Check your connection, then leave this page and come back to try again.'
+							);
 						}
 					);
 				} else {
-					// #hpgps-app starts out hidden; unhide it or the message below never shows.
-					const appEl = addinEl('hpgps-app');
-					if (appEl) appEl.className = appEl.className.replace('hidden', '').trim();
-					const container = addinEl('hpgps-scroll-content');
-					if (container) {
-						container.style.display = 'block';
-						container.innerHTML = `
-							<div style="padding:2em;text-align:center;color:#b00;">
-								<h2>EULA Declined</h2>
-								<p>You have declined the End User License Agreement. This application cannot be used until you accept the EULA.</p>
-							</div>
-						`;
-					}
+					showMessage(
+						'EULA Declined',
+						'You have declined the End User License Agreement. This application cannot be used until you accept the EULA.'
+					);
 				}
 			});
 		},

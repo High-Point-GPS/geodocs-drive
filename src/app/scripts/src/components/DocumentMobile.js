@@ -66,7 +66,7 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups }) => {
 		return q
 			? files.filter(
 					(file) =>
-						file.fileName.toLowerCase().includes(q) ||
+						String(file.fileName || '').toLowerCase().includes(q) ||
 						String(file.documentType || '').toLowerCase().includes(q)
 			  )
 			: files;
@@ -160,11 +160,12 @@ const DocumentMobile = ({ files, devices, drivers, trailers, groups }) => {
 					filteredFiles.map((file) => {
 						const kind = KIND_STYLE[fileKind(file.fileName)];
 						const expiry = expiryState(file);
+						const owners = file.owners || {};
 						const associations = [
-							...namesFor(file.owners.vehicles, devices).map((label) => ({ kind: 'vehicle', label })),
-							...namesFor(file.owners.drivers, drivers).map((label) => ({ kind: 'driver', label })),
-							...namesFor(file.owners.trailers, trailers).map((label) => ({ kind: 'trailer', label })),
-							...collapseCompanyGroup(namesFor(file.owners.groups, groups)).map((label) => ({ kind: 'group', label })),
+							...namesFor(owners.vehicles, devices).map((label) => ({ kind: 'vehicle', label })),
+							...namesFor(owners.drivers, drivers).map((label) => ({ kind: 'driver', label })),
+							...namesFor(owners.trailers, trailers).map((label) => ({ kind: 'trailer', label })),
+							...collapseCompanyGroup(namesFor(owners.groups, groups)).map((label) => ({ kind: 'group', label })),
 						];
 						return (
 							<Card

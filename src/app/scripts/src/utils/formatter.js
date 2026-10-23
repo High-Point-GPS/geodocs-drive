@@ -12,11 +12,11 @@ export const collapseCompanyGroup = (labels) => {
 export const getGroups = (device, user, groups) => {
 	let deviceGroups = [];
 	let userGroups = [];
-	if (device !== null) {
+	if (device && Array.isArray(device.groups)) {
 		deviceGroups = device.groups.map((g) => g.id);
 	}
 
-	if (user !== undefined) {
+	if (user) {
 		if (user.driverGroups) {
 			userGroups.push(...user.driverGroups.map((g) => g.id));
 		}
@@ -39,9 +39,9 @@ export const getGroups = (device, user, groups) => {
 	const result = [];
 
 	groupIdsCombined.forEach((groupId) => {
-		const group = groups.find((g) => g.id === groupId);
+		const group = (groups || []).find((g) => g.id === groupId);
 
-		if (group) {
+		if (group && !result.includes(group.name)) {
 			result.push(group.name);
 		}
 	});

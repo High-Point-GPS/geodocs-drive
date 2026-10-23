@@ -297,7 +297,43 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 								groups = result[3];
 							}
 
-							const trailerIds = trailer.map((t) => t.trailer.id);
+							const trailerIds = (trailer || [])
+								.map((t) => t && t.trailer && t.trailer.id)
+								.filter(Boolean);
+
+							const renderApp = (newTrailers) => {
+								// show main content
+								const appEl = addinEl('hpgps-app');
+								if (appEl) appEl.className = appEl.className.replace('hidden', '').trim();
+
+								const container = addinEl('hpgps-scroll-content');
+
+								if (container) {
+									// Recreate the root if Drive has re-injected our markup since it was made.
+									if (!appRoot || appRootContainer !== container) {
+										if (appRoot) appRoot.unmount();
+										appRoot = createRoot(container);
+										appRootContainer = container;
+									}
+									appRoot.render(
+										<App
+											api={freshApi}
+											session={session}
+											server={server}
+											database={session.database}
+											groups={getGroups(device, user, groups || [])}
+											device={device}
+											driver={user}
+											trailer={newTrailers}
+										/>
+									);
+								}
+							};
+
+							if (trailerIds.length === 0) {
+								renderApp([]);
+								return;
+							}
 
 							freshApi.multiCall(
 								trailerIds.map((trailerId) => [
@@ -308,44 +344,18 @@ geotab.addin.hpgpsFilemanagerDrive = function () {
 											id: trailerId,
 										},
 									},
-									,
 								]),
-								async function (result) {
-									let newTrailers = [];
-
-									if (result.length > 0) {
-										newTrailers = result.map((r) => r);
-									}
-									// show main content
-									const appEl = addinEl('hpgps-app');
-									if (appEl) appEl.className = appEl.className.replace('hidden', '').trim();
-
-									const container = addinEl('hpgps-scroll-content');
-
-									if (container) {
-										// Recreate the root if Drive has re-injected our markup since it was made.
-										if (!appRoot || appRootContainer !== container) {
-											if (appRoot) appRoot.unmount();
-											appRoot = createRoot(container);
-											appRootContainer = container;
-										}
-										appRoot.render(
-											<App
-												api={freshApi}
-												session={session}
-												server={server}
-												database={session.database}
-												groups={getGroups(device, user, groups)}
-												device={
-													device 
-												}
-												driver={
-													user 
-												}
-												trailer={newTrailers}
-											/>
-										);
-									}
+								function (result) {
+									// Each Get returns an array; flatten to plain Trailer objects.
+									const newTrailers = (Array.isArray(result) ? result : [])
+										.flat()
+										.filter((t) => t && t.id);
+									renderApp(newTrailers);
+								},
+								function (error) {
+									// Still show the documents; only the trailer context is missing.
+									console.error('Could not load trailers:', error);
+									renderApp([]);
 								}
 							);
 						},

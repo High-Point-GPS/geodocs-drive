@@ -63,9 +63,6 @@ const DocumentTable = ({ files }) => {
 		getFacetedRowModel: getFacetedRowModel(),
 		getFacetedUniqueValues: getFacetedUniqueValues(),
 		getFacetedMinMaxValues: getFacetedMinMaxValues(),
-		debugTable: true,
-		debugHeaders: true,
-		debugColumns: false,
 	});
 
 	const iconButtonSx = {

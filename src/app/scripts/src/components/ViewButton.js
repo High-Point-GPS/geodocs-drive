@@ -294,6 +294,7 @@ const defaultLayoutPluginInstance = defaultLayoutPlugin({
             alt={fileName}
             style={{ maxWidth: '100%', maxHeight: '100%' }}
             onLoad={() => setLoadingPreview(false)}
+            onError={() => setLoadingPreview(false)}
           />
         </Box>
       );

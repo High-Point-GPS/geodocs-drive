@@ -30,7 +30,7 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         if (errorData.valid === false && onValidationError) {
           onValidationError();
         }
@@ -40,10 +40,16 @@ const DownloadButton = ({ filePath, fileName, database, session, server, onValid
       }
 
       const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
+      link.href = url;
       link.download = fileName;
+      // Firefox only follows a click on a link that is in the document.
+      document.body.appendChild(link);
       link.click();
+      link.remove();
+      // Give the browser a moment to start the download before releasing the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     
   } catch (err) {
     console.log(err);

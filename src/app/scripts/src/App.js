@@ -76,8 +76,16 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 	// the documents a full screen down.
 	const phone = useMediaQuery('(max-width:600px)');
 
+	// Callers pass a string, an Error, or the server's JSON error body; the dialog
+	// renders text, and an object as a React child would crash the whole page.
 	const handleError = (error) => {
-		setErrorText(error);
+		let text = 'Something went wrong. Please try again.';
+		if (typeof error === 'string' && error) {
+			text = error;
+		} else if (error && typeof error === 'object') {
+			text = error.error || error.message || text;
+		}
+		setErrorText(String(text));
 		setOpenError(true);
 	}
 
@@ -136,8 +144,9 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 				body: JSON.stringify(messageBody)
 			});
 
-			const config = await configResponse.json();
-			setConfig(config || {});
+			// A failed config lookup falls back to the defaults rather than blocking the list.
+			const config = configResponse.ok ? (await configResponse.json().catch(() => ({}))) || {} : {};
+			setConfig(config);
 	
 			const driverCanSendEmail = Boolean(config?.driverCanSendEmail);
 
@@ -152,10 +161,12 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 			});
 			
 			if (!response.ok) {
-				const errorData = await response.json();
+				const errorData = await response.json().catch(() => ({}));
 
 				if (errorData.valid === false) {
-					  setValidationError(true);
+					setValidationError(true);
+				} else {
+					handleError(errorData.error || 'Could not load your documents. Please try again.');
 				}
 
 				console.error('Fetched Files failed: ', errorData.error ? errorData.error : '');
@@ -170,7 +181,8 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 			const transformedFiles = [];
 
 			visibleFiles.forEach(file => {
-				if (file.fileName) {
+				if (file && file.fileName) {
+					const fileTags = Array.isArray(file.tags) ? file.tags : [];
 					// {kind, label} entries so the table can show a matching icon per
 					// association; deduped since tags can repeat.
 					const associated = [];
@@ -182,14 +194,14 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 							associated.push({ kind, label });
 						}
 					};
-					const vehicleData = device && file.tags.includes(device.id)
+					const vehicleData = device && fileTags.includes(device.id)
 						? {
 							name: device?.name ?? null,
 							vehicleIdentificationNumber: device?.vehicleIdentificationNumber ?? null,
 							licensePlate: device?.licensePlate ?? null
 						}
 						: null;
-					file.tags.forEach((tag) => {
+					fileTags.forEach((tag) => {
 						if (device && tag === device.id) {
 							addAssociated('vehicle', `${device.name}`);
 						} else if (driver && tag === driver.id) {
@@ -270,6 +282,7 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 
 			} catch (err) {
 				console.error('Error', err);
+				handleError('Could not load your documents. Check your connection and try again.');
 
 			} finally {
 				if (isRefresh) {
@@ -438,7 +451,7 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 				</Tooltip>
 			</Box>
 			 <Grid container spacing={{xs: 1, sm : 2}}>
-                <InfoCard icon={<GroupsIcon />} title="Groups" subheader={groups.join(', ')} color={{ bg: '#e6f6e9', icon: '#2e7d32' }} />
+                <InfoCard icon={<GroupsIcon />} title="Groups" subheader={collapseCompanyGroup(groups).join(', ')} color={{ bg: '#e6f6e9', icon: '#2e7d32' }} />
                 <InfoCard icon={<AirlineSeatReclineNormalIcon />} title="Driver" subheader={`${driver ? `${driver.firstName} ${driver.lastName}` : 'No Driver Selected'}`} color={{ bg: '#e3f2fd', icon: '#1565c0' }} />
                 <InfoCard icon={<LocalShippingIcon />} title="Vehicle" subheader={`${device ? device.name : 'No Device Selected'}`} color={{ bg: '#fffde7', icon: '#f9a825' }} />
                 <InfoCard icon={<RvHookupIcon />} title="Trailer(s)" subheader={trailer.map(t => t.name).join(', ')} color={{ bg: '#f3e5f5', icon: '#6a1b9a' }} />
@@ -471,7 +484,7 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 				database={database}
 				session={session}
 				server={server}
-				documentTypes={Array.isArray(config.documentTypes) ? config.documentTypes : []}
+				documentTypes={Array.isArray(config.documentTypes) ? config.documentTypes.filter((t) => typeof t === 'string' && t.trim()) : []}
 				api={api}
 				driver={driver}
 				device={device}
@@ -497,9 +510,9 @@ const App = ({ api, database, session, server, groups, driver, device, trailer }
 			<Dialog
 				open={openError}
 				onClose={() => setOpenError(false)}
-				aria-labelledby="validation-error-title"
+				aria-labelledby="general-error-title"
 				>
-				<DialogTitle id="validation-error-title" sx={{fontSize: 24}}>Error</DialogTitle>
+				<DialogTitle id="general-error-title" sx={{fontSize: 24}}>Error</DialogTitle>
 				<DialogContent>
 					<Typography variant='body1'>{errorText}</Typography>
 				</DialogContent>
